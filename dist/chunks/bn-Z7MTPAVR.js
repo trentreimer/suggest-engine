@@ -1,4 +1,4 @@
-// data/bn.js
+// languages/bn.js
 var bn_default = `\u0986\u09AE\u09BF
 \u09A8\u09BE
 \u0986\u09AE\u09BE\u09B0

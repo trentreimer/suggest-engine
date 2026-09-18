@@ -1,4 +1,4 @@
-// data/ru.js
+// languages/ru.js
 var ru_default = `\u043D\u0435
 \u043D\u0430
 \u0447\u0442\u043E

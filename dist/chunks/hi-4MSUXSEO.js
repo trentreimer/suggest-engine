@@ -1,4 +1,4 @@
-// data/hi.js
+// languages/hi.js
 var hi_default = `\u0939\u0948
 \u092E\u0948\u0902
 \u0928\u0939\u0940\u0902

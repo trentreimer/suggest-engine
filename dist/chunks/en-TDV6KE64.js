@@ -1,4 +1,4 @@
-// data/en.js
+// languages/en.js
 var en_default = `the
 of
 to

@@ -8,9 +8,9 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const libDir = join(__dirname, '..');
-const dataDir = join(libDir, 'data');
+const bundledDir = join(libDir, 'languages');
 const repoRoot = process.env.HOST_DIR ? resolve(process.env.HOST_DIR) : join(libDir, '..', 'click.totype.org');
-const languagesDir = join(repoRoot, 'languages');
+const hostLanguagesDir = join(repoRoot, 'languages');
 const cacheDir = join(__dirname, '.cache');
 
 const config = JSON.parse(readFileSync(join(__dirname, 'wordlist-sources.json'), 'utf8'));
@@ -351,7 +351,7 @@ function regenerateManifest(exclude = []) {
     const codes = manifestOrder.filter(code => !exclude.includes(code));
     const text = 'export default {\n' + codes.map(code => `    ${code}: () => import('./${code}.js'),`).join('\n') + '\n};\n';
 
-    return writeIfChanged(join(dataDir, 'index.js'), text);
+    return writeIfChanged(join(bundledDir, 'index.js'), text);
 }
 
 function loadAttributionRecords() {
@@ -393,7 +393,7 @@ rebuilds (\`--remove <code>\` removes a language).
 
 ## Word lists
 
-Bundled lists in \`data/\` and reference copies in the host project
+Bundled lists in \`languages/\` and reference copies in the host project
 (\`languages/<code>/autocomplete.txt\`).
 
 | Language | Source file | License | Sentences | Words kept | Generated |
@@ -459,11 +459,11 @@ machine-assisted curation of the Arabic and Hindi lists.
 }
 
 function removeLanguages(codes) {
-    mkdirSync(dataDir, { recursive: true });
+    mkdirSync(bundledDir, { recursive: true });
     mkdirSync(attributionDir, { recursive: true });
 
     for (const code of codes) {
-        for (const path of [join(dataDir, `${code}.js`), join(attributionDir, `${code}.json`)]) {
+        for (const path of [join(bundledDir, `${code}.js`), join(attributionDir, `${code}.json`)]) {
             if (existsSync(path)) {
                 rmSync(path);
                 console.log(`[${code}] removed ${path}`);
@@ -476,7 +476,7 @@ function removeLanguages(codes) {
     regenerateManifest(codes);
     regenerateAttribution();
 
-    console.log('\nBundled data removed. Host-side cleanup left to you, if applicable:');
+    console.log('\nBundled lists removed. Host-side cleanup left to you, if applicable:');
     console.log('  - languages/<code>/ folder (keyboards, translations, reference word list)');
     console.log('  - registry entry in js/languages.js');
     console.log('  - [<code>] section in tools/profanity-filter.txt');
@@ -560,10 +560,10 @@ async function buildWords(code, source, dump, profanity, stats) {
 
     console.log(`[${code}] ${dump.sentences} sentences, ${counts.size} unique tokens, ${kept.length} kept (${entries.length - filtered.length} filtered)`);
 
-    const referencePath = join(languagesDir, code, 'autocomplete.txt');
+    const referencePath = join(hostLanguagesDir, code, 'autocomplete.txt');
 
-    writeWithBackup(referencePath, join(languagesDir, code, 'autocomplete-previous.txt'), text);
-    writeIfChanged(join(dataDir, `${code}.js`), `export default \`${escapeTemplateLiteral(text)}\`;\n`);
+    writeWithBackup(referencePath, join(hostLanguagesDir, code, 'autocomplete-previous.txt'), text);
+    writeIfChanged(join(bundledDir, `${code}.js`), `export default \`${escapeTemplateLiteral(text)}\`;\n`);
 
     stats.push({ code, mode: 'words', source: dump, tokens: counts.size, kept: kept.length });
 }
@@ -590,7 +590,7 @@ async function buildZhComposition(source, dump, profanity, stats) {
 
     console.log(`[zh] ${sentences} sentences, ${byReading.size} readings`);
 
-    writeWithBackup(join(languagesDir, 'zh', 'composition.txt'), join(languagesDir, 'zh', 'composition-previous.txt'), text);
+    writeWithBackup(join(hostLanguagesDir, 'zh', 'composition.txt'), join(hostLanguagesDir, 'zh', 'composition-previous.txt'), text);
 
     stats.push({ code: 'zh', mode: 'composition', source: dump, readings: byReading.size, sentences });
 }
@@ -619,7 +619,7 @@ async function buildJaComposition(source, profanity, stats, cache) {
 
     console.log(`[ja] ${rows} transcriptions, ${byReading.size} readings`);
 
-    writeWithBackup(join(languagesDir, 'ja', 'composition.txt'), join(languagesDir, 'ja', 'composition-previous.txt'), text);
+    writeWithBackup(join(hostLanguagesDir, 'ja', 'composition.txt'), join(hostLanguagesDir, 'ja', 'composition-previous.txt'), text);
 
     stats.push({ code: 'ja', mode: 'composition', source: { file: 'jpn_transcriptions.tsv.bz2', url, license: 'CC-BY 2.0 FR', sentences: rows }, readings: byReading.size, sentences: rows });
 }

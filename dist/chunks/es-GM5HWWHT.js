@@ -1,4 +1,4 @@
-// data/es.js
+// languages/es.js
 var es_default = `de
 la
 que

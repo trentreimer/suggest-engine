@@ -9,7 +9,7 @@ rebuilds (`--remove <code>` removes a language).
 
 ## Word lists
 
-Bundled lists in `data/` and reference copies in the host project
+Bundled lists in `languages/` and reference copies in the host project
 (`languages/<code>/autocomplete.txt`).
 
 | Language | Source file | License | Sentences | Words kept | Generated |

@@ -1,4 +1,4 @@
-// data/pt.js
+// languages/pt.js
 var pt_default = `de
 que
 n\xE3o

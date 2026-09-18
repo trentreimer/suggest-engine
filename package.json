@@ -1,6 +1,6 @@
 {
     "name": "suggest-engine",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "description": "Editor-agnostic autocomplete suggestion engine with optional user word learning.",
     "license": "MIT",
     "type": "module",
@@ -10,7 +10,7 @@
     "jsdelivr": "dist/suggest-engine.js",
     "files": [
         "src",
-        "data",
+        "languages",
         "dist",
         "ATTRIBUTION.md"
     ],

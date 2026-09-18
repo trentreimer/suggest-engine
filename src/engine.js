@@ -58,7 +58,7 @@ export class SuggestEngine {
         if (!/^[a-z]{2,3}(-[a-z0-9]+)*$/.test(language)) return false;
 
         if (!this.bundledManifest) {
-            this.bundledManifest = (await import('../data/index.js')).default;
+            this.bundledManifest = (await import('../languages/index.js')).default;
         }
 
         const loader = this.bundledManifest[language];

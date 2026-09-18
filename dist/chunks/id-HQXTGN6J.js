@@ -1,4 +1,4 @@
-// data/id.js
+// languages/id.js
 var id_default = `aku
 tidak
 tom

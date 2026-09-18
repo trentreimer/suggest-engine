@@ -1,4 +1,4 @@
-// data/fr.js
+// languages/fr.js
 var fr_default = `de
 je
 la

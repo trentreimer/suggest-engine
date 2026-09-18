@@ -120,7 +120,7 @@ Defaults for unspecified properties: `storagePrefix: 'suggest-engine'`,
 ### Bundled word lists
 
 The library ships frequency-ordered word lists for `en`, `fr`, `es`, `de`, `pt`,
-`id`, `ru`, `ar`, `hi`, and `bn` in `data/` (one JS module per language, plus a
+`id`, `ru`, `ar`, `hi`, and `bn` in `languages/` (one JS module per language, plus a
 manifest).
 Load the list for the active language with:
 
@@ -131,7 +131,7 @@ await engine.loadBundledWordList('ar');   // explicit language
 
 Registering does not switch the active language — call `setLanguage()` first, as
 with any source. Hosts can layer their own `addWordList()` sources on top;
-earlier-registered sources rank ahead of bundled data. The `data/*.js` files hold
+earlier-registered sources rank ahead of bundled data. The `languages/*.js` files hold
 the lists verbatim as template literals and are parsed with `parseWordList`, so
 regenerating from raw word-list text is a copy-paste into a template literal.
 
@@ -212,4 +212,4 @@ npm run build   # esbuild → dist/
 
 Both are committed, so version tags are directly consumable through jsDelivr
 (`cdn.jsdelivr.net/gh/trentreimer/suggest-engine@<tag>/dist/...`) with no npm
-step. Bump the tag when `src/`, `data/` or the bundle format changes.
+step. Bump the tag when `src/`, `languages/` or the bundle format changes.

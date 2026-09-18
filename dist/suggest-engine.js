@@ -14,14 +14,14 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
-  // data/en.js
+  // languages/en.js
   var en_exports = {};
   __export(en_exports, {
     default: () => en_default
   });
   var en_default;
   var init_en = __esm({
-    "data/en.js"() {
+    "languages/en.js"() {
       en_default = `the
 of
 to
@@ -10026,14 +10026,14 @@ headlights
     }
   });
 
-  // data/fr.js
+  // languages/fr.js
   var fr_exports = {};
   __export(fr_exports, {
     default: () => fr_default
   });
   var fr_default;
   var init_fr = __esm({
-    "data/fr.js"() {
+    "languages/fr.js"() {
       fr_default = `de
 je
 la
@@ -20038,14 +20038,14 @@ trou\xE9
     }
   });
 
-  // data/es.js
+  // languages/es.js
   var es_exports = {};
   __export(es_exports, {
     default: () => es_default
   });
   var es_default;
   var init_es = __esm({
-    "data/es.js"() {
+    "languages/es.js"() {
       es_default = `de
 la
 que
@@ -30050,14 +30050,14 @@ ponme
     }
   });
 
-  // data/de.js
+  // languages/de.js
   var de_exports = {};
   __export(de_exports, {
     default: () => de_default
   });
   var de_default;
   var init_de = __esm({
-    "data/de.js"() {
+    "languages/de.js"() {
       de_default = `ich
 ist
 die
@@ -40062,14 +40062,14 @@ h\xF6hen
     }
   });
 
-  // data/pt.js
+  // languages/pt.js
   var pt_exports = {};
   __export(pt_exports, {
     default: () => pt_default
   });
   var pt_default;
   var init_pt = __esm({
-    "data/pt.js"() {
+    "languages/pt.js"() {
       pt_default = `de
 que
 n\xE3o
@@ -50074,14 +50074,14 @@ considerava
     }
   });
 
-  // data/id.js
+  // languages/id.js
   var id_exports = {};
   __export(id_exports, {
     default: () => id_default
   });
   var id_default;
   var init_id = __esm({
-    "data/id.js"() {
+    "languages/id.js"() {
       id_default = `aku
 tidak
 tom
@@ -60086,14 +60086,14 @@ perencanaan
     }
   });
 
-  // data/ru.js
+  // languages/ru.js
   var ru_exports = {};
   __export(ru_exports, {
     default: () => ru_default
   });
   var ru_default;
   var init_ru = __esm({
-    "data/ru.js"() {
+    "languages/ru.js"() {
       ru_default = `\u043D\u0435
 \u043D\u0430
 \u0447\u0442\u043E
@@ -70098,14 +70098,14 @@ perencanaan
     }
   });
 
-  // data/ar.js
+  // languages/ar.js
   var ar_exports = {};
   __export(ar_exports, {
     default: () => ar_default
   });
   var ar_default;
   var init_ar = __esm({
-    "data/ar.js"() {
+    "languages/ar.js"() {
       ar_default = `\u0641\u064A
 \u0645\u0646
 \u0623\u0646
@@ -80110,14 +80110,14 @@ perencanaan
     }
   });
 
-  // data/hi.js
+  // languages/hi.js
   var hi_exports = {};
   __export(hi_exports, {
     default: () => hi_default
   });
   var hi_default;
   var init_hi = __esm({
-    "data/hi.js"() {
+    "languages/hi.js"() {
       hi_default = `\u0939\u0948
 \u092E\u0948\u0902
 \u0928\u0939\u0940\u0902
@@ -88158,14 +88158,14 @@ perencanaan
     }
   });
 
-  // data/bn.js
+  // languages/bn.js
   var bn_exports = {};
   __export(bn_exports, {
     default: () => bn_default
   });
   var bn_default;
   var init_bn = __esm({
-    "data/bn.js"() {
+    "languages/bn.js"() {
       bn_default = `\u0986\u09AE\u09BF
 \u09A8\u09BE
 \u0986\u09AE\u09BE\u09B0
@@ -98170,15 +98170,15 @@ perencanaan
     }
   });
 
-  // data/index.js
-  var data_exports = {};
-  __export(data_exports, {
-    default: () => data_default
+  // languages/index.js
+  var languages_exports = {};
+  __export(languages_exports, {
+    default: () => languages_default
   });
-  var data_default;
-  var init_data = __esm({
-    "data/index.js"() {
-      data_default = {
+  var languages_default;
+  var init_languages = __esm({
+    "languages/index.js"() {
+      languages_default = {
         en: () => Promise.resolve().then(() => (init_en(), en_exports)),
         fr: () => Promise.resolve().then(() => (init_fr(), fr_exports)),
         es: () => Promise.resolve().then(() => (init_es(), es_exports)),
@@ -98390,7 +98390,7 @@ perencanaan
       const language = String(lang || this.language).toLowerCase();
       if (!/^[a-z]{2,3}(-[a-z0-9]+)*$/.test(language)) return false;
       if (!this.bundledManifest) {
-        this.bundledManifest = (await Promise.resolve().then(() => (init_data(), data_exports))).default;
+        this.bundledManifest = (await Promise.resolve().then(() => (init_languages(), languages_exports))).default;
       }
       const loader = this.bundledManifest[language];
       if (!loader) return false;

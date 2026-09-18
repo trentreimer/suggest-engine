@@ -1,4 +1,4 @@
-// data/ar.js
+// languages/ar.js
 var ar_default = `\u0641\u064A
 \u0645\u0646
 \u0623\u0646

@@ -1,4 +1,4 @@
-// data/de.js
+// languages/de.js
 var de_default = `ich
 ist
 die
