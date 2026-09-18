@@ -1,0 +1,11 @@
+{
+    "code": "hi",
+    "mode": "words",
+    "tatoebaCode": "hin",
+    "sourceFile": "hin_sentences.tsv.bz2",
+    "sourceUrl": "https://downloads.tatoeba.org/exports/per_language/hin/hin_sentences.tsv.bz2",
+    "license": "CC-BY 2.0 FR",
+    "sentences": 16475,
+    "kept": 8036,
+    "generated": "2026-09-17"
+}

@@ -1,0 +1,62 @@
+{
+    "comment": "Word list and composition data sources for the suggest-engine. Regenerate with: node tools/build-wordlists.mjs [codes...]",
+    "sourceName": "Tatoeba",
+    "sourceUrl": "https://tatoeba.org",
+    "ccbyBaseUrl": "https://downloads.tatoeba.org/exports/per_language",
+    "cc0MinSentences": 20000,
+    "topN": 10000,
+    "compositionTopReadings": 5000,
+    "compositionMaxCandidates": 10,
+    "languages": {
+        "en": {
+            "tatoebaCode": "eng",
+            "script": "Latn"
+        },
+        "fr": {
+            "tatoebaCode": "fra",
+            "script": "Latn"
+        },
+        "es": {
+            "tatoebaCode": "spa",
+            "script": "Latn"
+        },
+        "de": {
+            "tatoebaCode": "deu",
+            "script": "Latn"
+        },
+        "pt": {
+            "tatoebaCode": "por",
+            "script": "Latn"
+        },
+        "id": {
+            "tatoebaCode": "ind",
+            "script": "Latn"
+        },
+        "ru": {
+            "tatoebaCode": "rus",
+            "script": "Cyrl"
+        },
+        "ar": {
+            "tatoebaCode": "ara",
+            "script": "Arab"
+        },
+        "hi": {
+            "tatoebaCode": "hin",
+            "script": "Deva"
+        },
+        "bn": {
+            "tatoebaCode": "ben",
+            "script": "Beng"
+        },
+        "ja": {
+            "mode": "composition",
+            "tatoebaCode": "jpn",
+            "script": "Jpan"
+        },
+        "zh": {
+            "mode": "composition",
+            "tatoebaCode": "cmn",
+            "script": "Hani"
+        }
+    }
+}

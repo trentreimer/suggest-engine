@@ -1,0 +1,11 @@
+{
+    "code": "zh",
+    "mode": "composition",
+    "tatoebaCode": "cmn",
+    "sourceFile": "cmn_sentences.tsv.bz2",
+    "sourceUrl": "https://downloads.tatoeba.org/exports/per_language/cmn/cmn_sentences.tsv.bz2",
+    "license": "CC-BY 2.0 FR",
+    "sentences": 89040,
+    "readings": 20287,
+    "generated": "2026-09-17"
+}

@@ -1,0 +1,11 @@
+{
+    "code": "fr",
+    "mode": "words",
+    "tatoebaCode": "fra",
+    "sourceFile": "fra_sentences.tsv.bz2",
+    "sourceUrl": "https://downloads.tatoeba.org/exports/per_language/fra/fra_sentences.tsv.bz2",
+    "license": "CC-BY 2.0 FR",
+    "sentences": 726280,
+    "kept": 10000,
+    "generated": "2026-09-17"
+}

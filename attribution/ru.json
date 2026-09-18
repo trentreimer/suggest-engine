@@ -1,0 +1,11 @@
+{
+    "code": "ru",
+    "mode": "words",
+    "tatoebaCode": "rus",
+    "sourceFile": "rus_sentences_CC0.tsv.bz2",
+    "sourceUrl": "https://downloads.tatoeba.org/exports/per_language/rus/rus_sentences_CC0.tsv.bz2",
+    "license": "CC0 1.0",
+    "sentences": 23035,
+    "kept": 10000,
+    "generated": "2026-09-17"
+}

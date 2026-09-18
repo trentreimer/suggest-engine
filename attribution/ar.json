@@ -1,0 +1,11 @@
+{
+    "code": "ar",
+    "mode": "words",
+    "tatoebaCode": "ara",
+    "sourceFile": "ara_sentences.tsv.bz2",
+    "sourceUrl": "https://downloads.tatoeba.org/exports/per_language/ara/ara_sentences.tsv.bz2",
+    "license": "CC-BY 2.0 FR",
+    "sentences": 68541,
+    "kept": 10000,
+    "generated": "2026-09-17"
+}

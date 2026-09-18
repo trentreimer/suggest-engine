@@ -1,0 +1,11 @@
+{
+    "code": "ja",
+    "mode": "composition",
+    "tatoebaCode": "jpn",
+    "sourceFile": "jpn_transcriptions.tsv.bz2",
+    "sourceUrl": "https://downloads.tatoeba.org/exports/per_language/jpn/jpn_transcriptions.tsv.bz2",
+    "license": "CC-BY 2.0 FR",
+    "sentences": 249000,
+    "readings": 19903,
+    "generated": "2026-09-17"
+}
