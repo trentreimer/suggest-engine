@@ -1,6 +1,6 @@
 export class UserWords {
     constructor({ storagePrefix = 'suggest-engine', promoteThreshold = 2, maxWords = 300 } = {}) {
-        this.storageKey = `${storagePrefix}:personal-words`;
+        this.storageKey = `${storagePrefix}:user-words`;
         this.promoteThreshold = promoteThreshold;
         this.maxWords = maxWords;
         this.validWordRegex = /^[\p{L}\p{M}'\-]+$/u;

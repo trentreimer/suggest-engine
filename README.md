@@ -1,6 +1,6 @@
 # suggest-engine
 
-Editor-agnostic autocomplete suggestion engine with optional personal word learning.
+Editor-agnostic autocomplete suggestion engine with optional user word learning.
 Words a user types repeatedly (names of family, friends, places) are learned on-device 
 and suggested ahead of shipped dictionaries.
 
@@ -18,12 +18,12 @@ const engine = new SuggestEngine({
 });
 
 await engine.addWordList('main', '/wordlists/en.txt');   // url | string[] | { text }
-engine.setLanguage('ar');                                 // switches sources + personal bucket
+engine.setLanguage('ar');                                 // switches sources + user-words bucket
 await engine.addWordList('main', '/wordlists/ar.txt');
 
 const word = engine.wordBefore('Hello Sar', 10);          // → 'Sar'
 const suggestions = engine.suggest(word);
-// → [{ text: 'Sarah', insertSuffix: 'rah', source: 'personal' }, ...]
+// → [{ text: 'Sarah', insertSuffix: 'rah', source: 'user-words' }, ...]
 
 engine.recordWord('Sarah');   // call when the user completes a word
 ```
@@ -45,12 +45,12 @@ clone, import `./src/index.js` instead.
 
 | Option | Default | Description |
 |---|---|---|
-| `language` | `'en'` | Active language; personal words are bucketed per language |
+| `language` | `'en'` | Active language; user words are bucketed per language |
 | `maxSuggestions` | `5` | Maximum results returned by `suggest()` |
 | `wordBoundaryChars` | `"'-"` | Extra non-letter characters treated as part of a word (letters and combining marks are always included) |
-| `userWords` | *(omitted)* | Optional personal-learning component; see below |
+| `userWords` | *(omitted)* | Optional user-word learning component; see below |
 
-### Personal learning (`userWords`)
+### User words (`userWords`)
 
 Presence enables the component; absence disables it entirely:
 
@@ -66,23 +66,24 @@ Defaults for unspecified properties: `storagePrefix: 'suggest-engine'`,
 `maxWords: 300` (eviction by lowest count, then oldest use).
 
 **Disabled contract:** `suggest()` returns word-list results only;
-`recordWord()` / `addWord()` return `false`; `personalWords()` returns `[]`;
-`removePersonalWord()` / `clearPersonalWords()` are no-ops. No storage access occurs.
+`recordWord()` / `addWord()` return `false`; `userWords()` returns `[]`;
+`removeUserWord()` / `clearUserWords()` are no-ops. No storage access occurs.
 
 ### Methods
 
 | Method | Description |
 |---|---|
-| `setLanguage(lang)` | Switch active language for sources and the personal bucket |
+| `setLanguage(lang)` | Switch active language for sources and the user-words bucket |
 | `addWordList(name, source)` | Register a word list for the current language (`url` string, `string[]`, or `{ text }`); same name replaces |
 | `wordBefore(text, caret)` | Word ending at the caret (`'`/`-`-aware) |
-| `suggest(word)` | Ranked suggestions: personal words first (frequency order), then word lists **in registration order** — word list order is suggestion priority, so ship lists most-common-first; deduped case-insensitively; `text` carries the word's own casing, `insertSuffix` is what to insert after the typed prefix |
+| `suggest(word)` | Ranked suggestions: user words first (frequency order), then word lists **in registration order** — word list order is suggestion priority, so ship lists most-common-first; deduped case-insensitively; `text` carries the word's own casing, `insertSuffix` is what to insert after the typed prefix |
 | `recordWord(word)` | Count a completed word (validates letters/marks plus `'`/`-`, minimum length 2) |
 | `addWord(word)` | Add immediately suggestible (manual entry) |
-| `personalWords()` | `[{ word, count }]` sorted by frequency |
-| `removePersonalWord(lower)` | Remove one word (lowercase key) |
-| `clearPersonalWords()` | Remove all words for the active language |
-| `enableUserWords()` | Re-enable the personal-words component after a `disableUserWords()`; starts from empty storage (no-op if already enabled or never configured) |
+| `userWordsEnabled` | `true` while the user-words component is active (getter) |
+| `userWords()` | `[{ word, count }]` sorted by frequency |
+| `removeUserWord(lower)` | Remove one word (lowercase key) |
+| `clearUserWords()` | Remove all words for the active language |
+| `enableUserWords()` | Re-enable the user-words component after a `disableUserWords()`; starts from empty storage (no-op if already enabled or never configured) |
 | `disableUserWords()` | Disable the component and wipe its stored words for **all** languages (no-op if already disabled) |
 
 ### Bundled word lists
@@ -140,7 +141,7 @@ licensing and generation details are documented in
 
 ### Storage
 
-Personal words live in `localStorage` under `${storagePrefix}:personal-words` with
+User words live in `localStorage` under `${storagePrefix}:user-words` with
 schema `{ version: 1, languages: { [lang]: { [word]: { word, count, last } } } }`.
 Everything stays on-device. If storage is unavailable (private browsing), learning
 falls back to in-memory for the session. The `UserWords` class is exported for

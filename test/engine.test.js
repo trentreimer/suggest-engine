@@ -34,9 +34,9 @@ test('userWords omitted keeps the component inert with zero storage access', () 
 
     assert.equal(engine.recordWord('Sarah'), false);
     assert.equal(engine.addWord('Sarah'), false);
-    assert.deepEqual(engine.personalWords(), []);
-    assert.equal(engine.removePersonalWord('sarah'), false);
-    engine.clearPersonalWords();
+    assert.deepEqual(engine.userWords(), []);
+    assert.equal(engine.removeUserWord('sarah'), false);
+    engine.clearUserWords();
     assert.equal(storage.calls, 0);
 });
 
@@ -54,9 +54,9 @@ test('userWords: true enables learning with generic defaults', async () => {
 
     assert.deepEqual(suggestions.map(s => s.text), ['Sarah', 'said']);
     assert.equal(suggestions[0].insertSuffix, 'rah');
-    assert.equal(suggestions[0].source, 'personal');
+    assert.equal(suggestions[0].source, 'user-words');
     assert.equal(suggestions[1].source, 'main');
-    assert.match(storage.getItem('suggest-engine:personal-words'), /"version":1/);
+    assert.match(storage.getItem('suggest-engine:user-words'), /"version":1/);
 });
 
 test('userWords object enables with overrides while the rest default', () => {
@@ -67,7 +67,7 @@ test('userWords object enables with overrides while the rest default', () => {
     engine.recordWord('Sam');
     engine.recordWord('Sam');
 
-    assert.ok(storage.getItem('ctt:personal-words'));
+    assert.ok(storage.getItem('ctt:user-words'));
     assert.deepEqual(engine.suggest('sa').map(s => s.text), ['Sam']);
 });
 
@@ -79,10 +79,10 @@ test('empty userWords object enables with all defaults', () => {
     engine.recordWord('Solo');
     engine.recordWord('Solo');
 
-    assert.ok(storage.getItem('suggest-engine:personal-words'));
+    assert.ok(storage.getItem('suggest-engine:user-words'));
 });
 
-test('personal words rank by frequency ahead of alphabetical sources', async () => {
+test('user words rank by frequency ahead of alphabetical sources', async () => {
     const storage = mockStorage();
     globalThis.localStorage = storage;
 
@@ -142,7 +142,7 @@ test('wordBefore clamps the index and supports custom boundary chars', () => {
     assert.equal(engine.wordBefore('a-b', 3), 'a-b');
 });
 
-test('setLanguage switches source sets and personal buckets', async () => {
+test('setLanguage switches source sets and user buckets', async () => {
     const storage = mockStorage();
     globalThis.localStorage = storage;
 
@@ -229,11 +229,11 @@ test('disableUserWords wipes storage across languages and stops learning', async
     engine.setLanguage('ar');
     engine.recordWord('أحمد');
     engine.recordWord('أحمد');
-    assert.ok(storage.getItem('ctt:personal-words'));
+    assert.ok(storage.getItem('ctt:user-words'));
 
     engine.disableUserWords();
-    assert.equal(storage.getItem('ctt:personal-words'), null);
-    assert.deepEqual(engine.personalWords(), []);
+    assert.equal(storage.getItem('ctt:user-words'), null);
+    assert.deepEqual(engine.userWords(), []);
 
     engine.setLanguage('en');
     await engine.addWordList('main', ['sable', 'sachet']);
@@ -241,19 +241,19 @@ test('disableUserWords wipes storage across languages and stops learning', async
     assert.equal(engine.recordWord('sable'), false);
     assert.equal(engine.addWord('sable'), false);
     assert.deepEqual(engine.suggest('sa').map(s => s.text), ['sable', 'sachet']);
-    assert.equal(engine.removePersonalWord('sable'), false);
-    assert.equal(storage.getItem('ctt:personal-words'), null);
+    assert.equal(engine.removeUserWord('sable'), false);
+    assert.equal(storage.getItem('ctt:user-words'), null);
 });
 
 test('disableUserWords removes the key even if words were never read this session', async () => {
     const storage = mockStorage();
     globalThis.localStorage = storage;
-    storage.setItem('suggest-engine:personal-words', JSON.stringify({ version: 1, languages: { en: { sa: { word: 'sa', count: 5, last: 0 } } } }));
+    storage.setItem('suggest-engine:user-words', JSON.stringify({ version: 1, languages: { en: { sa: { word: 'sa', count: 5, last: 0 } } } }));
 
     const engine = new SuggestEngine({ language: 'en', userWords: true });
 
     engine.disableUserWords();
-    assert.equal(storage.getItem('suggest-engine:personal-words'), null);
+    assert.equal(storage.getItem('suggest-engine:user-words'), null);
     assert.deepEqual(engine.suggest('sa'), []);
 });
 
@@ -273,7 +273,7 @@ test('enableUserWords after disable starts clean and learns again', async () => 
     engine.recordWord('solo');
     engine.recordWord('solo');
     assert.deepEqual(engine.suggest('so').map(s => s.text), ['solo']);
-    assert.match(storage.getItem('ctt:personal-words'), /"version":1/);
+    assert.match(storage.getItem('ctt:user-words'), /"version":1/);
 });
 
 test('enableUserWords keeps the current language and preserves word-list sources', async () => {

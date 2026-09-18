@@ -1,7 +1,7 @@
 // src/user-words.js
 var UserWords = class {
   constructor({ storagePrefix = "suggest-engine", promoteThreshold = 2, maxWords = 300 } = {}) {
-    this.storageKey = `${storagePrefix}:personal-words`;
+    this.storageKey = `${storagePrefix}:user-words`;
     this.promoteThreshold = promoteThreshold;
     this.maxWords = maxWords;
     this.validWordRegex = /^[\p{L}\p{M}'\-]+$/u;
@@ -177,14 +177,14 @@ var SuggestEngine = class {
     this.boundaryRegex = new RegExp(`[^\\p{L}\\p{M}${escapeForCharacterClass(this.wordBoundaryChars)}]`, "u");
     const userWordsOptions = normalizeUserWords(options.userWords);
     this.userWordsOptions = userWordsOptions;
-    this.userWords = userWordsOptions ? new UserWords(userWordsOptions) : null;
-    this.userWords?.setLanguage(this.language);
+    this.userWordsStore = userWordsOptions ? new UserWords(userWordsOptions) : null;
+    this.userWordsStore?.setLanguage(this.language);
     this.sourcesByLanguage = {};
     this.bundledManifest = null;
   }
   setLanguage(language) {
     this.language = String(language || "en").toLowerCase();
-    this.userWords?.setLanguage(this.language);
+    this.userWordsStore?.setLanguage(this.language);
   }
   async addWordList(name, source) {
     const words = await resolveWordList(source);
@@ -229,9 +229,9 @@ var SuggestEngine = class {
       seen.add(key);
       results.push({ text: full, insertSuffix: full.substring(word.length), source });
     };
-    if (this.userWords) {
-      for (const full of this.userWords.suggestionsFor(word)) {
-        addSuggestion(full, "personal");
+    if (this.userWordsStore) {
+      for (const full of this.userWordsStore.suggestionsFor(word)) {
+        addSuggestion(full, "user-words");
       }
     }
     const library = [];
@@ -248,28 +248,31 @@ var SuggestEngine = class {
     return results.slice(0, this.maxSuggestions);
   }
   recordWord(word) {
-    return this.userWords ? this.userWords.record(word) : false;
+    return this.userWordsStore ? this.userWordsStore.record(word) : false;
   }
   addWord(word) {
-    return this.userWords ? this.userWords.add(word) : false;
+    return this.userWordsStore ? this.userWordsStore.add(word) : false;
   }
-  personalWords() {
-    return this.userWords ? this.userWords.list() : [];
+  get userWordsEnabled() {
+    return this.userWordsStore !== null;
   }
-  removePersonalWord(lower) {
-    return this.userWords ? this.userWords.remove(lower) : false;
+  userWords() {
+    return this.userWordsStore ? this.userWordsStore.list() : [];
   }
-  clearPersonalWords() {
-    if (this.userWords) this.userWords.clear();
+  removeUserWord(lower) {
+    return this.userWordsStore ? this.userWordsStore.remove(lower) : false;
+  }
+  clearUserWords() {
+    if (this.userWordsStore) this.userWordsStore.clear();
   }
   enableUserWords() {
-    if (this.userWords || !this.userWordsOptions) return;
-    this.userWords = new UserWords(this.userWordsOptions);
-    this.userWords.setLanguage(this.language);
+    if (this.userWordsStore || !this.userWordsOptions) return;
+    this.userWordsStore = new UserWords(this.userWordsOptions);
+    this.userWordsStore.setLanguage(this.language);
   }
   disableUserWords() {
-    this.userWords?.destroy();
-    this.userWords = null;
+    this.userWordsStore?.destroy();
+    this.userWordsStore = null;
   }
 };
 export {
