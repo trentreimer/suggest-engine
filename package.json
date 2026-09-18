@@ -1,6 +1,6 @@
 {
     "name": "suggest-engine",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "description": "Editor-agnostic autocomplete suggestion engine with optional user word learning.",
     "license": "MIT",
     "type": "module",
@@ -15,7 +15,7 @@
         "ATTRIBUTION.md"
     ],
     "scripts": {
-        "build": "rm -rf dist && esbuild src/index.js --bundle --splitting --format=esm --outdir=dist --entry-names=suggest-engine.esm --chunk-names=chunks/[name]-[hash] && esbuild src/index.js --bundle --format=iife --global-name=SuggestEngine --outfile=dist/suggest-engine.js",
+        "build": "rm -rf dist && esbuild src/index.js --bundle --splitting --format=esm --outdir=dist --entry-names=suggest-engine.esm --chunk-names=chunks/[name]-[hash] && esbuild src/global.js --bundle --format=iife --outfile=dist/suggest-engine.js",
         "test": "node --test"
     },
     "devDependencies": {

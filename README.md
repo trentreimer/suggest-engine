@@ -6,10 +6,47 @@ and suggested ahead of shipped dictionaries.
 
 Zero runtime dependencies. Plain ES modules.
 
-## Usage
+## Quick start
+
+Suggestions work out of the box with the bundled English word list.
+
+**ES modules**
 
 ```js
-import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.1.0/dist/suggest-engine.esm.js';
+import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.2.1/dist/suggest-engine.esm.js';
+
+const engine = new SuggestEngine();
+
+await engine.loadBundledWordList();
+
+engine.suggest('hel');
+// → [{ text: 'help', insertSuffix: 'p', source: 'bundled' }, ...]
+```
+
+**Classic `<script>` tag**
+
+```html
+<script src="https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.2.1/dist/suggest-engine.js"></script>
+<script>
+    (async () => {
+        const engine = new SuggestEngine();
+
+        await engine.loadBundledWordList();
+
+        console.log(engine.suggest('hel'));
+    })();
+</script>
+```
+
+`text` is the completed word and `insertSuffix` is what to insert after the
+typed prefix. The IIFE build puts the class on `window.SuggestEngine`, with
+`UserWords`, `parseWordList` and `resolveWordList` attached as properties. From
+a local clone, import `./src/index.js` instead.
+
+## Full example
+
+```js
+import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.2.1/dist/suggest-engine.esm.js';
 
 const engine = new SuggestEngine({
     language: 'en',
@@ -32,12 +69,6 @@ The host owns all editor interaction: feed the engine text plus a caret index,
 insert `insertSuffix` at the caret when a suggestion is chosen, and call
 `recordWord` when a word is completed (space, punctuation, Enter, or choosing a
 suggestion all count as completion).
-
-The ESM build loads bundled language data lazily from `dist/chunks/` next to it.
-For a classic `<script>` tag, use the self-contained IIFE build
-`dist/suggest-engine.js`, which exposes `SuggestEngine`, `UserWords`,
-`parseWordList` and `resolveWordList` on `window.SuggestEngine`. From a local
-clone, import `./src/index.js` instead.
 
 ## API
 
@@ -175,8 +206,9 @@ npm run build   # esbuild → dist/
 
 - `dist/suggest-engine.esm.js` — ESM entry; bundled language data loads lazily
   from `dist/chunks/` on demand.
-- `dist/suggest-engine.js` — self-contained IIFE exposing the exports on
-  `window.SuggestEngine`, for plain `<script>` tags.
+- `dist/suggest-engine.js` — self-contained IIFE exposing the class as
+  `window.SuggestEngine`, with `UserWords`, `parseWordList` and
+  `resolveWordList` attached, for plain `<script>` tags.
 
 Both are committed, so version tags are directly consumable through jsDelivr
 (`cdn.jsdelivr.net/gh/trentreimer/suggest-engine@<tag>/dist/...`) with no npm
