@@ -8,5 +8,8 @@
     "sentences": 41503,
     "tokens": 41530,
     "kept": 10000,
-    "generated": "2026-09-18"
+    "ngramContexts": 6885,
+    "ngramPairs": 20130,
+    "ngramBytes": 121872,
+    "generated": "2026-09-19"
 }

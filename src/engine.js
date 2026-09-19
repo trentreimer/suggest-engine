@@ -1,5 +1,6 @@
 import { UserWords } from './user-words.js';
 import { resolveWordList, parseWordList } from './word-lists.js';
+import { NgramModel, fnv1a } from './ngrams.js';
 
 const userWordsDefaults = {
     storagePrefix: 'suggest-engine',
@@ -23,6 +24,37 @@ function escapeForCharacterClass(chars) {
     return chars.replace(/[\\\]\^-]/g, '\\$&');
 }
 
+function buildSource(words) {
+    const lowered = new Array(words.length);
+    const buckets = new Map();
+
+    for (let i = 0; i < words.length; i ++) {
+        const lower = words[i].toLowerCase();
+        lowered[i] = lower;
+
+        const first = lower.charAt(0);
+        let bucket = buckets.get(first);
+
+        if (!bucket) buckets.set(first, bucket = []);
+
+        bucket.push(i);
+    }
+
+    return { words, lowered, buckets };
+}
+
+function defaultNgramBase() {
+    try {
+        if (typeof import.meta !== 'undefined' && import.meta.url) {
+            return new URL('../languages/', import.meta.url).href;
+        }
+    } catch (err) {
+        // import.meta is unavailable in classic-script builds; callers pass a base URL instead.
+    }
+
+    return null;
+}
+
 export class SuggestEngine {
     constructor(options = {}) {
         this.language = String(options.language ?? 'en').toLowerCase();
@@ -36,6 +68,8 @@ export class SuggestEngine {
         this.userWordsStore?.setLanguage(this.language);
 
         this.sourcesByLanguage = {};
+        this.ngramsByLanguage = {};
+        this.ngramIndexes = {};
         this.bundledManifest = null;
     }
 
@@ -49,7 +83,8 @@ export class SuggestEngine {
 
         if (!this.sourcesByLanguage[this.language]) this.sourcesByLanguage[this.language] = {};
 
-        this.sourcesByLanguage[this.language][name] = words;
+        this.sourcesByLanguage[this.language][name] = buildSource(words);
+        delete this.ngramIndexes[this.language];
     }
 
     async loadBundledWordList(lang) {
@@ -69,7 +104,49 @@ export class SuggestEngine {
 
         if (!this.sourcesByLanguage[language]) this.sourcesByLanguage[language] = {};
 
-        this.sourcesByLanguage[language].bundled = parseWordList(module.default);
+        this.sourcesByLanguage[language].bundled = buildSource(parseWordList(module.default));
+        delete this.ngramIndexes[language];
+
+        return true;
+    }
+
+    async addNgramModel(source) {
+        let model = source;
+
+        if (typeof source === 'string') {
+            const response = await fetch(source);
+
+            if (!response.ok) throw new Error(`Unable to fetch ${source}`);
+
+            model = new NgramModel(await response.arrayBuffer());
+        } else if (source instanceof ArrayBuffer || ArrayBuffer.isView(source)) {
+            model = new NgramModel(source);
+        }
+
+        if (!(model instanceof NgramModel)) throw new TypeError('Unsupported ngram model source');
+
+        this.ngramsByLanguage[this.language] = model;
+        delete this.ngramIndexes[this.language];
+
+        return true;
+    }
+
+    async loadBundledNgrams(baseUrl) {
+        const language = this.language;
+
+        if (!/^[a-z]{2,3}(-[a-z0-9]+)*$/.test(language)) return false;
+
+        const base = baseUrl ?? defaultNgramBase();
+
+        if (!base) throw new Error('loadBundledNgrams requires a baseUrl (the URL of the languages/ directory)');
+
+        const prefix = String(base).endsWith('/') ? base : `${base}/`;
+        const response = await fetch(`${prefix}${language}.ngram.bin`);
+
+        if (!response.ok) return false;
+
+        this.ngramsByLanguage[language] = new NgramModel(await response.arrayBuffer());
+        delete this.ngramIndexes[language];
 
         return true;
     }
@@ -90,45 +167,192 @@ export class SuggestEngine {
         return text.substring(start, end);
     }
 
-    suggest(word) {
+    wordsBefore(text, index, count = 2) {
+        if (typeof text !== 'string') return [];
+
+        const words = [];
+        let cursor = Math.min(index ?? text.length, text.length);
+
+        while (words.length < count && cursor > 0) {
+            while (cursor > 0 && this.boundaryRegex.test(text.charAt(cursor - 1))) cursor --;
+
+            const end = cursor;
+
+            while (cursor > 0 && !this.boundaryRegex.test(text.charAt(cursor - 1))) cursor --;
+
+            if (end === cursor) break;
+
+            words.push(text.substring(cursor, end));
+        }
+
+        return words;
+    }
+
+    suggest(word, context) {
+        const previousWords = typeof context === 'string' && context.length
+            ? this.wordsBefore(context, context.length, 1)
+            : [];
+
+        return this.suggestInternal(word, previousWords);
+    }
+
+    suggestAt(text, caret) {
+        const word = this.wordBefore(text, caret);
+        const end = Math.min(caret ?? text.length, text.length) - word.length;
+
+        return this.suggestInternal(word, this.wordsBefore(text, end, 1));
+    }
+
+    nextWords(context) {
+        const previousWords = typeof context === 'string' && context.length
+            ? this.wordsBefore(context, context.length, 1)
+            : [];
+
+        return this.nextWordsInternal(previousWords);
+    }
+
+    suggestInternal(word, previousWords) {
         if (typeof word !== 'string' || word.length === 0) return [];
 
         const wanted = word.toLowerCase();
+        const limit = this.maxSuggestions;
         const seen = new Set();
         const results = [];
 
-        const addSuggestion = function(full, source) {
+        const addSuggestion = (full, source, lower) => {
             if (full.length <= word.length) return;
-            if (full.substring(0, word.length).toLowerCase() !== wanted) return;
 
-            const key = full.toLowerCase();
+            const key = lower ?? full.toLowerCase();
 
+            if (!key.startsWith(wanted)) return;
             if (seen.has(key)) return;
+
             seen.add(key);
             results.push({ text: full, insertSuffix: full.substring(word.length), source });
         };
 
+        if (previousWords.length) {
+            for (const full of this.contextMatches(wanted, previousWords)) addSuggestion(full, 'bundled');
+        }
+
         if (this.userWordsStore) {
-            for (const full of this.userWordsStore.suggestionsFor(word)) {
-                addSuggestion(full, 'user-words');
+            for (const full of this.userWordsStore.suggestionsFor(word)) addSuggestion(full, 'user-words');
+        }
+
+        const sources = this.sourcesByLanguage[this.language] || {};
+
+        for (const [name, source] of Object.entries(sources)) {
+            if (results.length >= limit) break;
+
+            const bucket = source.buckets.get(wanted.charAt(0));
+
+            if (!bucket) continue;
+
+            for (const index of bucket) {
+                addSuggestion(source.words[index], name, source.lowered[index]);
+
+                if (results.length >= limit) break;
             }
         }
 
-        const library = [];
+        return results.slice(0, limit);
+    }
 
-        for (const [name, words] of Object.entries(this.sourcesByLanguage[this.language] || {})) {
-            for (const full of words) {
-                if (full.length > word.length && full.substring(0, word.length).toLowerCase() === wanted) {
-                    library.push({ full, name });
+    nextWordsInternal(previousWords) {
+        const limit = this.maxSuggestions;
+        const seen = new Set();
+        const results = [];
+        const index = previousWords.length ? this.ngramIndex(this.language) : null;
+
+        if (index) {
+            const id = index.ids.get(previousWords[0].toLowerCase());
+            const slice = id === undefined ? null : index.model.bigram(id);
+
+            if (slice) {
+                for (let i = 0; i < slice.ids.length && results.length < limit; i ++) {
+                    const successor = slice.ids[i];
+                    const key = index.lowered[successor];
+
+                    if (seen.has(key)) continue;
+
+                    seen.add(key);
+                    results.push({ text: index.words[successor], insertSuffix: index.words[successor], source: 'bundled' });
                 }
             }
         }
 
-        for (const { full, name } of library) {
-            addSuggestion(full, name);
+        if (this.userWordsStore) {
+            for (const entry of this.userWordsStore.list()) {
+                if (results.length >= limit) break;
+
+                const key = entry.word.toLowerCase();
+
+                if (seen.has(key)) continue;
+
+                seen.add(key);
+                results.push({ text: entry.word, insertSuffix: entry.word, source: 'user-words' });
+            }
         }
 
-        return results.slice(0, this.maxSuggestions);
+        return results;
+    }
+
+    ngramIndex(language) {
+        const cached = this.ngramIndexes[language];
+
+        if (cached !== undefined) return cached;
+
+        const model = this.ngramsByLanguage[language];
+        const source = this.sourcesByLanguage[language]?.bundled;
+
+        if (!model || !source) return null;
+
+        const hash = fnv1a(source.words.join('\n'));
+
+        if (hash !== model.vocabHash) {
+            console.warn(`suggest-engine: ngram model for "${language}" does not match the bundled word list; context ranking disabled`);
+            this.ngramIndexes[language] = null;
+
+            return null;
+        }
+
+        const ids = new Map();
+
+        for (let i = 0; i < source.words.length; i ++) {
+            const lower = source.lowered[i];
+
+            if (!ids.has(lower)) ids.set(lower, i);
+        }
+
+        const index = { model, words: source.words, lowered: source.lowered, ids };
+
+        this.ngramIndexes[language] = index;
+
+        return index;
+    }
+
+    contextMatches(wanted, previousWords) {
+        const index = this.ngramIndex(this.language);
+
+        if (!index) return [];
+
+        const id = index.ids.get(previousWords[0].toLowerCase());
+
+        if (id === undefined) return [];
+
+        const slice = index.model.bigram(id);
+
+        if (!slice) return [];
+
+        const matches = [];
+
+        for (let i = 0; i < slice.ids.length; i ++) {
+            const successor = slice.ids[i];
+
+            if (index.lowered[successor].startsWith(wanted)) matches.push(index.words[successor]);
+        }
+
+        return matches;
     }
 
     recordWord(word) {

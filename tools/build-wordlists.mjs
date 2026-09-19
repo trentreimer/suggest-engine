@@ -5,6 +5,7 @@ import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { encodeNgramModel, fnv1a } from './ngram-format.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const libDir = join(__dirname, '..');
@@ -308,6 +309,24 @@ function writeWithBackup(path, previousPath, text) {
     return true;
 }
 
+function writeBufferIfChanged(path, buffer) {
+    if (existsSync(path) && readFileSync(path).equals(buffer)) return false;
+
+    writeFileSync(path, buffer);
+
+    return true;
+}
+
+function writeBufferWithBackup(path, previousPath, buffer) {
+    if (existsSync(path) && readFileSync(path).equals(buffer)) return false;
+
+    if (existsSync(path) && readFileSync(path).length > 0) copyFileSync(path, previousPath);
+
+    writeFileSync(path, buffer);
+
+    return true;
+}
+
 function attributionRecord(stat, generated) {
     const meta = config.languages[stat.code];
     const record = {
@@ -323,6 +342,12 @@ function attributionRecord(stat, generated) {
     if (stat.mode === 'words') {
         record.tokens = stat.tokens;
         record.kept = stat.kept;
+
+        if (stat.ngrams) {
+            record.ngramContexts = stat.ngrams.contexts;
+            record.ngramPairs = stat.ngrams.pairs;
+            record.ngramBytes = stat.ngrams.bytes;
+        }
     } else {
         record.readings = stat.readings;
     }
@@ -375,7 +400,7 @@ function regenerateAttribution() {
     const records = loadAttributionRecords();
     const wordRows = records
         .filter(record => record.mode === 'words')
-        .map(record => `| ${record.code} | \`${record.sourceFile}\` | ${record.license} | ${record.sentences.toLocaleString('en')} | ${record.kept.toLocaleString('en')} | ${record.generated} |`)
+        .map(record => `| ${record.code} | \`${record.sourceFile}\` | ${record.license} | ${record.sentences.toLocaleString('en')} | ${record.kept.toLocaleString('en')} | ${record.ngramContexts ? record.ngramContexts.toLocaleString('en') : '—'} | ${record.ngramPairs ? record.ngramPairs.toLocaleString('en') : '—'} | ${record.generated} |`)
         .join('\n');
     const compositionRows = records
         .filter(record => record.mode === 'composition')
@@ -393,11 +418,12 @@ rebuilds (\`--remove <code>\` removes a language).
 
 ## Word lists
 
-Bundled lists in \`languages/\` and reference copies in the host project
-(\`languages/<code>/autocomplete.txt\`).
+Bundled lists in \`languages/\` (word-list modules and \`<code>.ngram.bin\`
+bigram context models) and reference copies in the host project
+(\`languages/<code>/autocomplete.txt\`, \`languages/<code>/ngrams.bin\`).
 
-| Language | Source file | License | Sentences | Words kept | Generated |
-|---|---|---|---|---|---|
+| Language | Source file | License | Sentences | Words kept | Bigram contexts | Bigram pairs | Generated |
+|---|---|---|---|---|---|---|---|
 ${wordRows}
 
 ## Composition data
@@ -438,6 +464,13 @@ frequency counting, profanity filtering (\`tools/profanity-filter.txt\`,
 project-owned and user-editable), frequency-descending sort with alphabetical
 tie-break, top ${config.topN} retained.
 
+Context models: bigram counts accumulated over the same sentence dumps between
+consecutive retained vocabulary words within a sentence; successors occurring
+fewer than ${config.ngramMinCount ?? 2} times are dropped and at most
+${config.ngramTopK ?? 8} successors are kept per context, ranked by count with an
+alphabetical tie-break. Models reference positions in the bundled word list and
+are validated against it by hash at load time.
+
 Composition data: CJK word segmentation via \`Intl.Segmenter\`; for Japanese,
 kana readings are taken from the furigana annotations in the transcriptions
 dump and katakana is folded to hiragana; for Mandarin, readings are toneless
@@ -450,7 +483,8 @@ section for the language exists in \`tools/profanity-filter.txt\`.
 
 Lists replaced by this pipeline are retained in the host project
 (\`languages/<code>/autocomplete-previous.txt\`,
-\`languages/<code>/composition-previous.txt\`) for reference only. They include
+\`languages/<code>/composition-previous.txt\`,
+\`languages/<code>/ngrams-previous.bin\`) for reference only. They include
 the pre-pipeline lists of undocumented provenance and the original
 machine-assisted curation of the Arabic and Hindi lists.
 `;
@@ -463,7 +497,7 @@ function removeLanguages(codes) {
     mkdirSync(attributionDir, { recursive: true });
 
     for (const code of codes) {
-        for (const path of [join(bundledDir, `${code}.js`), join(attributionDir, `${code}.json`)]) {
+        for (const path of [join(bundledDir, `${code}.js`), join(bundledDir, `${code}.ngram.bin`), join(attributionDir, `${code}.json`)]) {
             if (existsSync(path)) {
                 rmSync(path);
                 console.log(`[${code}] removed ${path}`);
@@ -477,7 +511,7 @@ function removeLanguages(codes) {
     regenerateAttribution();
 
     console.log('\nBundled lists removed. Host-side cleanup left to you, if applicable:');
-    console.log('  - languages/<code>/ folder (keyboards, translations, reference word list)');
+    console.log('  - languages/<code>/ folder (keyboards, translations, reference word list, ngrams.bin and its backup)');
     console.log('  - registry entry in js/languages.js');
     console.log('  - [<code>] section in tools/profanity-filter.txt');
     console.log('  - entry in tools/wordlist-sources.json (full builds would otherwise re-add it)');
@@ -535,6 +569,91 @@ async function chooseDump(code, source, cache) {
     return { path: ccbyPath, file: `${tatoebaCode}_sentences.tsv.bz2`, url: urls.ccby, license: 'CC-BY 2.0 FR', sentences: ccbyCount, ccbyCount };
 }
 
+function compareWords(a, b) {
+    return a < b ? -1 : a > b ? 1 : 0;
+}
+
+async function buildNgrams(code, source, dump, kept) {
+    const vocabularySize = kept.length;
+    const topK = config.ngramTopK ?? 8;
+    const minCount = config.ngramMinCount ?? 2;
+    const idByWord = new Map();
+
+    for (let i = 0; i < vocabularySize; i ++) idByWord.set(kept[i][0], i);
+
+    console.log(`[${code}] counting bigrams (${vocabularySize} vocabulary words)`);
+
+    const pairCounts = new Map();
+
+    await decompressLines(dump.path, line => {
+        const text = extractText(line);
+
+        if (!text) return;
+
+        let previous = -1;
+
+        for (const token of tokenize(text, source.script)) {
+            const id = idByWord.get(token);
+
+            if (id === undefined) {
+                previous = -1;
+                continue;
+            }
+
+            if (previous !== -1) {
+                const key = previous * vocabularySize + id;
+                pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
+            }
+
+            previous = id;
+        }
+    });
+
+    const byContext = new Map();
+
+    for (const [key, count] of pairCounts) {
+        const context = Math.floor(key / vocabularySize);
+        const successor = key % vocabularySize;
+        let list = byContext.get(context);
+
+        if (!list) byContext.set(context, list = []);
+
+        list.push({ id: successor, count });
+    }
+
+    const contexts = [];
+
+    for (const id of [...byContext.keys()].sort((a, b) => a - b)) {
+        const successors = byContext.get(id)
+            .filter(entry => entry.count >= minCount)
+            .sort((a, b) => b.count - a.count || compareWords(kept[a.id][0], kept[b.id][0]))
+            .slice(0, topK);
+
+        if (successors.length) contexts.push({ id, successors });
+    }
+
+    const words = kept.map(([word]) => word);
+    const buffer = contexts.length
+        ? Buffer.from(encodeNgramModel({ language: code, vocabHash: fnv1a(words.join('\n')), contexts }))
+        : null;
+    const bundledPath = join(bundledDir, `${code}.ngram.bin`);
+    const hostPath = join(hostLanguagesDir, code, 'ngrams.bin');
+
+    if (buffer) {
+        writeBufferIfChanged(bundledPath, buffer);
+        writeBufferWithBackup(hostPath, join(hostLanguagesDir, code, 'ngrams-previous.bin'), buffer);
+    } else {
+        rmSync(bundledPath, { force: true });
+        rmSync(hostPath, { force: true });
+    }
+
+    const pairs = contexts.reduce((total, context) => total + context.successors.length, 0);
+
+    console.log(`[${code}] ${contexts.length} bigram contexts, ${pairs} pairs (${buffer ? buffer.byteLength.toLocaleString('en') : 0} bytes)`);
+
+    return { contexts: contexts.length, pairs, bytes: buffer ? buffer.byteLength : 0 };
+}
+
 async function buildWords(code, source, dump, profanity, stats) {
     console.log(`[${code}] counting tokens (${source.script}, ${dump.license})`);
     const counts = new Map();
@@ -560,12 +679,15 @@ async function buildWords(code, source, dump, profanity, stats) {
 
     console.log(`[${code}] ${dump.sentences} sentences, ${counts.size} unique tokens, ${kept.length} kept (${entries.length - filtered.length} filtered)`);
 
+    mkdirSync(join(hostLanguagesDir, code), { recursive: true });
+
+    const ngrams = await buildNgrams(code, source, dump, kept);
     const referencePath = join(hostLanguagesDir, code, 'autocomplete.txt');
 
     writeWithBackup(referencePath, join(hostLanguagesDir, code, 'autocomplete-previous.txt'), text);
     writeIfChanged(join(bundledDir, `${code}.js`), `export default \`${escapeTemplateLiteral(text)}\`;\n`);
 
-    stats.push({ code, mode: 'words', source: dump, tokens: counts.size, kept: kept.length });
+    stats.push({ code, mode: 'words', source: dump, tokens: counts.size, kept: kept.length, ngrams });
 }
 
 async function buildZhComposition(source, dump, profanity, stats) {

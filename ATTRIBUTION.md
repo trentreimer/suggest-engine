@@ -9,21 +9,22 @@ rebuilds (`--remove <code>` removes a language).
 
 ## Word lists
 
-Bundled lists in `languages/` and reference copies in the host project
-(`languages/<code>/autocomplete.txt`).
+Bundled lists in `languages/` (word-list modules and `<code>.ngram.bin`
+bigram context models) and reference copies in the host project
+(`languages/<code>/autocomplete.txt`, `languages/<code>/ngrams.bin`).
 
-| Language | Source file | License | Sentences | Words kept | Generated |
-|---|---|---|---|---|---|
-| en | `eng_sentences_CC0.tsv.bz2` | CC0 1.0 | 41,503 | 10,000 | 2026-09-18 |
-| fr | `fra_sentences.tsv.bz2` | CC-BY 2.0 FR | 726,280 | 10,000 | 2026-09-17 |
-| es | `spa_sentences.tsv.bz2` | CC-BY 2.0 FR | 442,006 | 10,000 | 2026-09-17 |
-| de | `deu_sentences.tsv.bz2` | CC-BY 2.0 FR | 780,494 | 10,000 | 2026-09-17 |
-| pt | `por_sentences.tsv.bz2` | CC-BY 2.0 FR | 444,455 | 10,000 | 2026-09-17 |
-| id | `ind_sentences.tsv.bz2` | CC-BY 2.0 FR | 28,275 | 10,000 | 2026-09-17 |
-| ru | `rus_sentences_CC0.tsv.bz2` | CC0 1.0 | 23,035 | 10,000 | 2026-09-17 |
-| ar | `ara_sentences.tsv.bz2` | CC-BY 2.0 FR | 68,541 | 10,000 | 2026-09-17 |
-| hi | `hin_sentences.tsv.bz2` | CC-BY 2.0 FR | 16,475 | 8,036 | 2026-09-17 |
-| bn | `ben_sentences.tsv.bz2` | CC-BY 2.0 FR | 15,813 | 10,000 | 2026-09-18 |
+| Language | Source file | License | Sentences | Words kept | Bigram contexts | Bigram pairs | Generated |
+|---|---|---|---|---|---|---|---|
+| en | `eng_sentences_CC0.tsv.bz2` | CC0 1.0 | 41,503 | 10,000 | 6,885 | 20,130 | 2026-09-19 |
+| fr | `fra_sentences.tsv.bz2` | CC-BY 2.0 FR | 726,280 | 10,000 | — | — | 2026-09-17 |
+| es | `spa_sentences.tsv.bz2` | CC-BY 2.0 FR | 442,006 | 10,000 | — | — | 2026-09-17 |
+| de | `deu_sentences.tsv.bz2` | CC-BY 2.0 FR | 780,494 | 10,000 | — | — | 2026-09-17 |
+| pt | `por_sentences.tsv.bz2` | CC-BY 2.0 FR | 444,455 | 10,000 | — | — | 2026-09-17 |
+| id | `ind_sentences.tsv.bz2` | CC-BY 2.0 FR | 28,275 | 10,000 | — | — | 2026-09-17 |
+| ru | `rus_sentences_CC0.tsv.bz2` | CC0 1.0 | 23,035 | 10,000 | — | — | 2026-09-17 |
+| ar | `ara_sentences.tsv.bz2` | CC-BY 2.0 FR | 68,541 | 10,000 | — | — | 2026-09-17 |
+| hi | `hin_sentences.tsv.bz2` | CC-BY 2.0 FR | 16,475 | 8,036 | — | — | 2026-09-17 |
+| bn | `ben_sentences.tsv.bz2` | CC-BY 2.0 FR | 15,813 | 10,000 | — | — | 2026-09-18 |
 
 ## Composition data
 
@@ -64,6 +65,13 @@ frequency counting, profanity filtering (`tools/profanity-filter.txt`,
 project-owned and user-editable), frequency-descending sort with alphabetical
 tie-break, top 10000 retained.
 
+Context models: bigram counts accumulated over the same sentence dumps between
+consecutive retained vocabulary words within a sentence; successors occurring
+fewer than 2 times are dropped and at most
+8 successors are kept per context, ranked by count with an
+alphabetical tie-break. Models reference positions in the bundled word list and
+are validated against it by hash at load time.
+
 Composition data: CJK word segmentation via `Intl.Segmenter`; for Japanese,
 kana readings are taken from the furigana annotations in the transcriptions
 dump and katakana is folded to hiragana; for Mandarin, readings are toneless
@@ -76,6 +84,7 @@ section for the language exists in `tools/profanity-filter.txt`.
 
 Lists replaced by this pipeline are retained in the host project
 (`languages/<code>/autocomplete-previous.txt`,
-`languages/<code>/composition-previous.txt`) for reference only. They include
+`languages/<code>/composition-previous.txt`,
+`languages/<code>/ngrams-previous.bin`) for reference only. They include
 the pre-pipeline lists of undocumented provenance and the original
 machine-assisted curation of the Arabic and Hindi lists.

@@ -98346,7 +98346,108 @@ perencanaan
     return [...new Set(words)];
   }
 
+  // src/ngrams.js
+  var NGRAM_MAGIC = 1196311891;
+  var NGRAM_VERSION = 1;
+  var NGRAM_BIGRAM_SECTION = 1;
+  var SECTION_ENTRY_BYTES = 10;
+  function fnv1a(text) {
+    let hash = 2166136261;
+    for (let i = 0; i < text.length; i++) {
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+  }
+  var NgramModel = class {
+    constructor(buffer) {
+      if (ArrayBuffer.isView(buffer)) {
+        buffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+      }
+      if (!(buffer instanceof ArrayBuffer)) throw new TypeError("NgramModel expects an ArrayBuffer");
+      this.buffer = buffer;
+      this.language = "";
+      this.vocabHash = 0;
+      this.contextCount = 0;
+      this.entryCount = 0;
+      this.contexts = null;
+      this.offsets = null;
+      this.successorIds = null;
+      this.counts = null;
+      this.parseHeader();
+      this.parseSections();
+    }
+    parseHeader() {
+      if (this.buffer.byteLength < 19) throw new Error("Invalid ngram model: truncated header");
+      const view = new DataView(this.buffer);
+      if (view.getUint32(0, true) !== NGRAM_MAGIC) throw new Error("Invalid ngram model: bad magic");
+      const version = view.getUint16(4, true);
+      if (version !== NGRAM_VERSION) throw new Error(`Unsupported ngram model version: ${version}`);
+      const languageLength = view.getUint8(6);
+      let cursor = 7;
+      if (cursor + languageLength + 6 > this.buffer.byteLength) throw new Error("Invalid ngram model: truncated header");
+      let language = "";
+      for (let i = 0; i < languageLength; i++) language += String.fromCharCode(view.getUint8(cursor + i));
+      cursor += languageLength;
+      this.language = language;
+      this.vocabHash = view.getUint32(cursor, true);
+      this.sectionTableOffset = cursor + 6;
+      this.sectionCount = view.getUint16(cursor + 4, true);
+    }
+    parseSections() {
+      const view = new DataView(this.buffer);
+      const tableEnd = this.sectionTableOffset + this.sectionCount * SECTION_ENTRY_BYTES;
+      if (tableEnd > this.buffer.byteLength) throw new Error("Invalid ngram model: truncated section table");
+      for (let i = 0; i < this.sectionCount; i++) {
+        const entry = this.sectionTableOffset + i * SECTION_ENTRY_BYTES;
+        const id = view.getUint8(entry);
+        const offset = view.getUint32(entry + 2, true);
+        const length = view.getUint32(entry + 6, true);
+        if (offset % 4 !== 0 || offset + length > this.buffer.byteLength) {
+          throw new Error("Invalid ngram model: section out of bounds");
+        }
+        if (id === NGRAM_BIGRAM_SECTION) this.parseBigramSection(offset, length);
+      }
+    }
+    parseBigramSection(offset, length) {
+      if (length < 8) throw new Error("Invalid ngram model: truncated bigram section");
+      const view = new DataView(this.buffer);
+      const contextCount = view.getUint32(offset, true);
+      const entryCount = view.getUint32(offset + 4, true);
+      const contextsStart = offset + 8;
+      const offsetsStart = contextsStart + contextCount * 2 + contextCount % 2 * 2;
+      const successorsStart = offsetsStart + (contextCount + 1) * 4;
+      const countsStart = successorsStart + entryCount * 2;
+      if (countsStart + entryCount * 2 > offset + length) throw new Error("Invalid ngram model: truncated bigram section");
+      this.contextCount = contextCount;
+      this.entryCount = entryCount;
+      this.contexts = new Uint16Array(this.buffer, contextsStart, contextCount);
+      this.offsets = new Uint32Array(this.buffer, offsetsStart, contextCount + 1);
+      this.successorIds = new Uint16Array(this.buffer, successorsStart, entryCount);
+      this.counts = new Uint16Array(this.buffer, countsStart, entryCount);
+    }
+    bigram(id) {
+      const contexts = this.contexts;
+      if (!contexts || !Number.isInteger(id)) return null;
+      let low = 0;
+      let high = contexts.length - 1;
+      while (low <= high) {
+        const mid = low + high >> 1;
+        const value = contexts[mid];
+        if (value === id) {
+          const start = this.offsets[mid];
+          const end = this.offsets[mid + 1];
+          return { ids: this.successorIds.subarray(start, end), counts: this.counts.subarray(start, end) };
+        }
+        if (value < id) low = mid + 1;
+        else high = mid - 1;
+      }
+      return null;
+    }
+  };
+
   // src/engine.js
+  var import_meta = {};
   var userWordsDefaults = {
     storagePrefix: "suggest-engine",
     promoteThreshold: 2,
@@ -98364,6 +98465,28 @@ perencanaan
   function escapeForCharacterClass(chars) {
     return chars.replace(/[\\\]\^-]/g, "\\$&");
   }
+  function buildSource(words) {
+    const lowered = new Array(words.length);
+    const buckets = /* @__PURE__ */ new Map();
+    for (let i = 0; i < words.length; i++) {
+      const lower = words[i].toLowerCase();
+      lowered[i] = lower;
+      const first = lower.charAt(0);
+      let bucket = buckets.get(first);
+      if (!bucket) buckets.set(first, bucket = []);
+      bucket.push(i);
+    }
+    return { words, lowered, buckets };
+  }
+  function defaultNgramBase() {
+    try {
+      if (typeof import_meta !== "undefined" && import_meta.url) {
+        return new URL("../languages/", import_meta.url).href;
+      }
+    } catch (err) {
+    }
+    return null;
+  }
   var SuggestEngine = class {
     constructor(options = {}) {
       this.language = String(options.language ?? "en").toLowerCase();
@@ -98375,6 +98498,8 @@ perencanaan
       this.userWordsStore = userWordsOptions ? new UserWords(userWordsOptions) : null;
       this.userWordsStore?.setLanguage(this.language);
       this.sourcesByLanguage = {};
+      this.ngramsByLanguage = {};
+      this.ngramIndexes = {};
       this.bundledManifest = null;
     }
     setLanguage(language) {
@@ -98384,7 +98509,8 @@ perencanaan
     async addWordList(name, source) {
       const words = await resolveWordList(source);
       if (!this.sourcesByLanguage[this.language]) this.sourcesByLanguage[this.language] = {};
-      this.sourcesByLanguage[this.language][name] = words;
+      this.sourcesByLanguage[this.language][name] = buildSource(words);
+      delete this.ngramIndexes[this.language];
     }
     async loadBundledWordList(lang) {
       const language = String(lang || this.language).toLowerCase();
@@ -98396,7 +98522,34 @@ perencanaan
       if (!loader) return false;
       const module = await loader();
       if (!this.sourcesByLanguage[language]) this.sourcesByLanguage[language] = {};
-      this.sourcesByLanguage[language].bundled = parseWordList(module.default);
+      this.sourcesByLanguage[language].bundled = buildSource(parseWordList(module.default));
+      delete this.ngramIndexes[language];
+      return true;
+    }
+    async addNgramModel(source) {
+      let model = source;
+      if (typeof source === "string") {
+        const response = await fetch(source);
+        if (!response.ok) throw new Error(`Unable to fetch ${source}`);
+        model = new NgramModel(await response.arrayBuffer());
+      } else if (source instanceof ArrayBuffer || ArrayBuffer.isView(source)) {
+        model = new NgramModel(source);
+      }
+      if (!(model instanceof NgramModel)) throw new TypeError("Unsupported ngram model source");
+      this.ngramsByLanguage[this.language] = model;
+      delete this.ngramIndexes[this.language];
+      return true;
+    }
+    async loadBundledNgrams(baseUrl) {
+      const language = this.language;
+      if (!/^[a-z]{2,3}(-[a-z0-9]+)*$/.test(language)) return false;
+      const base = baseUrl ?? defaultNgramBase();
+      if (!base) throw new Error("loadBundledNgrams requires a baseUrl (the URL of the languages/ directory)");
+      const prefix = String(base).endsWith("/") ? base : `${base}/`;
+      const response = await fetch(`${prefix}${language}.ngram.bin`);
+      if (!response.ok) return false;
+      this.ngramsByLanguage[language] = new NgramModel(await response.arrayBuffer());
+      delete this.ngramIndexes[language];
       return true;
     }
     wordBefore(text, index) {
@@ -98411,36 +98564,127 @@ perencanaan
       }
       return text.substring(start, end);
     }
-    suggest(word) {
+    wordsBefore(text, index, count = 2) {
+      if (typeof text !== "string") return [];
+      const words = [];
+      let cursor = Math.min(index ?? text.length, text.length);
+      while (words.length < count && cursor > 0) {
+        while (cursor > 0 && this.boundaryRegex.test(text.charAt(cursor - 1))) cursor--;
+        const end = cursor;
+        while (cursor > 0 && !this.boundaryRegex.test(text.charAt(cursor - 1))) cursor--;
+        if (end === cursor) break;
+        words.push(text.substring(cursor, end));
+      }
+      return words;
+    }
+    suggest(word, context) {
+      const previousWords = typeof context === "string" && context.length ? this.wordsBefore(context, context.length, 1) : [];
+      return this.suggestInternal(word, previousWords);
+    }
+    suggestAt(text, caret) {
+      const word = this.wordBefore(text, caret);
+      const end = Math.min(caret ?? text.length, text.length) - word.length;
+      return this.suggestInternal(word, this.wordsBefore(text, end, 1));
+    }
+    nextWords(context) {
+      const previousWords = typeof context === "string" && context.length ? this.wordsBefore(context, context.length, 1) : [];
+      return this.nextWordsInternal(previousWords);
+    }
+    suggestInternal(word, previousWords) {
       if (typeof word !== "string" || word.length === 0) return [];
       const wanted = word.toLowerCase();
+      const limit = this.maxSuggestions;
       const seen = /* @__PURE__ */ new Set();
       const results = [];
-      const addSuggestion = function(full, source) {
+      const addSuggestion = (full, source, lower) => {
         if (full.length <= word.length) return;
-        if (full.substring(0, word.length).toLowerCase() !== wanted) return;
-        const key = full.toLowerCase();
+        const key = lower ?? full.toLowerCase();
+        if (!key.startsWith(wanted)) return;
         if (seen.has(key)) return;
         seen.add(key);
         results.push({ text: full, insertSuffix: full.substring(word.length), source });
       };
+      if (previousWords.length) {
+        for (const full of this.contextMatches(wanted, previousWords)) addSuggestion(full, "bundled");
+      }
       if (this.userWordsStore) {
-        for (const full of this.userWordsStore.suggestionsFor(word)) {
-          addSuggestion(full, "user-words");
+        for (const full of this.userWordsStore.suggestionsFor(word)) addSuggestion(full, "user-words");
+      }
+      const sources = this.sourcesByLanguage[this.language] || {};
+      for (const [name, source] of Object.entries(sources)) {
+        if (results.length >= limit) break;
+        const bucket = source.buckets.get(wanted.charAt(0));
+        if (!bucket) continue;
+        for (const index of bucket) {
+          addSuggestion(source.words[index], name, source.lowered[index]);
+          if (results.length >= limit) break;
         }
       }
-      const library = [];
-      for (const [name, words] of Object.entries(this.sourcesByLanguage[this.language] || {})) {
-        for (const full of words) {
-          if (full.length > word.length && full.substring(0, word.length).toLowerCase() === wanted) {
-            library.push({ full, name });
+      return results.slice(0, limit);
+    }
+    nextWordsInternal(previousWords) {
+      const limit = this.maxSuggestions;
+      const seen = /* @__PURE__ */ new Set();
+      const results = [];
+      const index = previousWords.length ? this.ngramIndex(this.language) : null;
+      if (index) {
+        const id = index.ids.get(previousWords[0].toLowerCase());
+        const slice = id === void 0 ? null : index.model.bigram(id);
+        if (slice) {
+          for (let i = 0; i < slice.ids.length && results.length < limit; i++) {
+            const successor = slice.ids[i];
+            const key = index.lowered[successor];
+            if (seen.has(key)) continue;
+            seen.add(key);
+            results.push({ text: index.words[successor], insertSuffix: index.words[successor], source: "bundled" });
           }
         }
       }
-      for (const { full, name } of library) {
-        addSuggestion(full, name);
+      if (this.userWordsStore) {
+        for (const entry of this.userWordsStore.list()) {
+          if (results.length >= limit) break;
+          const key = entry.word.toLowerCase();
+          if (seen.has(key)) continue;
+          seen.add(key);
+          results.push({ text: entry.word, insertSuffix: entry.word, source: "user-words" });
+        }
       }
-      return results.slice(0, this.maxSuggestions);
+      return results;
+    }
+    ngramIndex(language) {
+      const cached = this.ngramIndexes[language];
+      if (cached !== void 0) return cached;
+      const model = this.ngramsByLanguage[language];
+      const source = this.sourcesByLanguage[language]?.bundled;
+      if (!model || !source) return null;
+      const hash = fnv1a(source.words.join("\n"));
+      if (hash !== model.vocabHash) {
+        console.warn(`suggest-engine: ngram model for "${language}" does not match the bundled word list; context ranking disabled`);
+        this.ngramIndexes[language] = null;
+        return null;
+      }
+      const ids = /* @__PURE__ */ new Map();
+      for (let i = 0; i < source.words.length; i++) {
+        const lower = source.lowered[i];
+        if (!ids.has(lower)) ids.set(lower, i);
+      }
+      const index = { model, words: source.words, lowered: source.lowered, ids };
+      this.ngramIndexes[language] = index;
+      return index;
+    }
+    contextMatches(wanted, previousWords) {
+      const index = this.ngramIndex(this.language);
+      if (!index) return [];
+      const id = index.ids.get(previousWords[0].toLowerCase());
+      if (id === void 0) return [];
+      const slice = index.model.bigram(id);
+      if (!slice) return [];
+      const matches = [];
+      for (let i = 0; i < slice.ids.length; i++) {
+        const successor = slice.ids[i];
+        if (index.lowered[successor].startsWith(wanted)) matches.push(index.words[successor]);
+      }
+      return matches;
     }
     recordWord(word) {
       return this.userWordsStore ? this.userWordsStore.record(word) : false;
@@ -98472,6 +98716,6 @@ perencanaan
   };
 
   // src/global.js
-  Object.assign(SuggestEngine, { UserWords, parseWordList, resolveWordList });
+  Object.assign(SuggestEngine, { UserWords, NgramModel, parseWordList, resolveWordList });
   globalThis.SuggestEngine = SuggestEngine;
 })();

@@ -5,6 +5,8 @@
     "ccbyBaseUrl": "https://downloads.tatoeba.org/exports/per_language",
     "cc0MinSentences": 20000,
     "topN": 10000,
+    "ngramTopK": 8,
+    "ngramMinCount": 2,
     "compositionTopReadings": 5000,
     "compositionMaxCandidates": 10,
     "languages": {
