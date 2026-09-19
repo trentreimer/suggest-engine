@@ -190,7 +190,7 @@ export class SuggestEngine {
 
     suggest(word, context) {
         const previousWords = typeof context === 'string' && context.length
-            ? this.wordsBefore(context, context.length, 1)
+            ? this.wordsBefore(context, context.length, 2)
             : [];
 
         return this.suggestInternal(word, previousWords);
@@ -200,12 +200,12 @@ export class SuggestEngine {
         const word = this.wordBefore(text, caret);
         const end = Math.min(caret ?? text.length, text.length) - word.length;
 
-        return this.suggestInternal(word, this.wordsBefore(text, end, 1));
+        return this.suggestInternal(word, this.wordsBefore(text, end, 2));
     }
 
     nextWords(context) {
         const previousWords = typeof context === 'string' && context.length
-            ? this.wordsBefore(context, context.length, 1)
+            ? this.wordsBefore(context, context.length, 2)
             : [];
 
         return this.nextWordsInternal(previousWords);
@@ -265,10 +265,9 @@ export class SuggestEngine {
         const index = previousWords.length ? this.ngramIndex(this.language) : null;
 
         if (index) {
-            const id = index.ids.get(previousWords[0].toLowerCase());
-            const slice = id === undefined ? null : index.model.bigram(id);
+            const collect = slice => {
+                if (!slice) return;
 
-            if (slice) {
                 for (let i = 0; i < slice.ids.length && results.length < limit; i ++) {
                     const successor = slice.ids[i];
                     const key = index.lowered[successor];
@@ -278,7 +277,17 @@ export class SuggestEngine {
                     seen.add(key);
                     results.push({ text: index.words[successor], insertSuffix: index.words[successor], source: 'bundled' });
                 }
+            };
+
+            const previousId = index.ids.get(previousWords[0].toLowerCase());
+
+            if (previousWords.length >= 2) {
+                const first = index.ids.get(previousWords[1].toLowerCase());
+
+                if (first !== undefined && previousId !== undefined) collect(index.model.trigram(first, previousId));
             }
+
+            if (previousId !== undefined) collect(index.model.bigram(previousId));
         }
 
         if (this.userWordsStore) {
@@ -336,21 +345,31 @@ export class SuggestEngine {
 
         if (!index) return [];
 
-        const id = index.ids.get(previousWords[0].toLowerCase());
-
-        if (id === undefined) return [];
-
-        const slice = index.model.bigram(id);
-
-        if (!slice) return [];
-
         const matches = [];
+        const seen = new Set();
+        const collect = slice => {
+            if (!slice) return;
 
-        for (let i = 0; i < slice.ids.length; i ++) {
-            const successor = slice.ids[i];
+            for (let i = 0; i < slice.ids.length; i ++) {
+                const successor = slice.ids[i];
 
-            if (index.lowered[successor].startsWith(wanted)) matches.push(index.words[successor]);
+                if (seen.has(successor)) continue;
+                if (!index.lowered[successor].startsWith(wanted)) continue;
+
+                seen.add(successor);
+                matches.push(index.words[successor]);
+            }
+        };
+
+        const previousId = index.ids.get(previousWords[0].toLowerCase());
+
+        if (previousWords.length >= 2) {
+            const first = index.ids.get(previousWords[1].toLowerCase());
+
+            if (first !== undefined && previousId !== undefined) collect(index.model.trigram(first, previousId));
         }
+
+        if (previousId !== undefined) collect(index.model.bigram(previousId));
 
         return matches;
     }

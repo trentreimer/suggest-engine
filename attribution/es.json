@@ -5,7 +5,13 @@
     "sourceFile": "spa_sentences.tsv.bz2",
     "sourceUrl": "https://downloads.tatoeba.org/exports/per_language/spa/spa_sentences.tsv.bz2",
     "license": "CC-BY 2.0 FR",
-    "sentences": 442006,
+    "sentences": 442135,
+    "tokens": 80547,
     "kept": 10000,
-    "generated": "2026-09-17"
+    "ngramContexts": 9690,
+    "ngramPairs": 49255,
+    "trigramContexts": 29347,
+    "trigramPairs": 56077,
+    "ngramBytes": 714304,
+    "generated": "2026-09-19"
 }

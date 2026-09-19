@@ -155,6 +155,7 @@ function dedupe(words) {
 var NGRAM_MAGIC = 1196311891;
 var NGRAM_VERSION = 1;
 var NGRAM_BIGRAM_SECTION = 1;
+var NGRAM_TRIGRAM_SECTION = 2;
 var SECTION_ENTRY_BYTES = 10;
 function fnv1a(text) {
   let hash = 2166136261;
@@ -179,6 +180,12 @@ var NgramModel = class {
     this.offsets = null;
     this.successorIds = null;
     this.counts = null;
+    this.trigramContextCount = 0;
+    this.trigramEntryCount = 0;
+    this.trigramKeys = null;
+    this.trigramOffsets = null;
+    this.trigramSuccessorIds = null;
+    this.trigramCounts = null;
     this.parseHeader();
     this.parseSections();
   }
@@ -212,6 +219,7 @@ var NgramModel = class {
         throw new Error("Invalid ngram model: section out of bounds");
       }
       if (id === NGRAM_BIGRAM_SECTION) this.parseBigramSection(offset, length);
+      else if (id === NGRAM_TRIGRAM_SECTION) this.parseTrigramSection(offset, length);
     }
   }
   parseBigramSection(offset, length) {
@@ -245,6 +253,42 @@ var NgramModel = class {
         return { ids: this.successorIds.subarray(start, end), counts: this.counts.subarray(start, end) };
       }
       if (value < id) low = mid + 1;
+      else high = mid - 1;
+    }
+    return null;
+  }
+  parseTrigramSection(offset, length) {
+    if (length < 8) throw new Error("Invalid ngram model: truncated trigram section");
+    const view = new DataView(this.buffer);
+    const contextCount = view.getUint32(offset, true);
+    const entryCount = view.getUint32(offset + 4, true);
+    const keysStart = offset + 8;
+    const offsetsStart = keysStart + contextCount * 4;
+    const successorsStart = offsetsStart + (contextCount + 1) * 4;
+    const countsStart = successorsStart + entryCount * 2;
+    if (countsStart + entryCount * 2 > offset + length) throw new Error("Invalid ngram model: truncated trigram section");
+    this.trigramContextCount = contextCount;
+    this.trigramEntryCount = entryCount;
+    this.trigramKeys = new Uint16Array(this.buffer, keysStart, contextCount * 2);
+    this.trigramOffsets = new Uint32Array(this.buffer, offsetsStart, contextCount + 1);
+    this.trigramSuccessorIds = new Uint16Array(this.buffer, successorsStart, entryCount);
+    this.trigramCounts = new Uint16Array(this.buffer, countsStart, entryCount);
+  }
+  trigram(first, second) {
+    const keys = this.trigramKeys;
+    if (!keys || !Number.isInteger(first) || !Number.isInteger(second)) return null;
+    let low = 0;
+    let high = this.trigramContextCount - 1;
+    while (low <= high) {
+      const mid = low + high >> 1;
+      const a = keys[mid * 2];
+      const b = keys[mid * 2 + 1];
+      if (a === first && b === second) {
+        const start = this.trigramOffsets[mid];
+        const end = this.trigramOffsets[mid + 1];
+        return { ids: this.trigramSuccessorIds.subarray(start, end), counts: this.trigramCounts.subarray(start, end) };
+      }
+      if (a < first || a === first && b < second) low = mid + 1;
       else high = mid - 1;
     }
     return null;
@@ -320,7 +364,7 @@ var SuggestEngine = class {
     const language = String(lang || this.language).toLowerCase();
     if (!/^[a-z]{2,3}(-[a-z0-9]+)*$/.test(language)) return false;
     if (!this.bundledManifest) {
-      this.bundledManifest = (await import("./chunks/languages-5SP5PBXT.js")).default;
+      this.bundledManifest = (await import("./chunks/languages-QH2C23FT.js")).default;
     }
     const loader = this.bundledManifest[language];
     if (!loader) return false;
@@ -382,16 +426,16 @@ var SuggestEngine = class {
     return words;
   }
   suggest(word, context) {
-    const previousWords = typeof context === "string" && context.length ? this.wordsBefore(context, context.length, 1) : [];
+    const previousWords = typeof context === "string" && context.length ? this.wordsBefore(context, context.length, 2) : [];
     return this.suggestInternal(word, previousWords);
   }
   suggestAt(text, caret) {
     const word = this.wordBefore(text, caret);
     const end = Math.min(caret ?? text.length, text.length) - word.length;
-    return this.suggestInternal(word, this.wordsBefore(text, end, 1));
+    return this.suggestInternal(word, this.wordsBefore(text, end, 2));
   }
   nextWords(context) {
-    const previousWords = typeof context === "string" && context.length ? this.wordsBefore(context, context.length, 1) : [];
+    const previousWords = typeof context === "string" && context.length ? this.wordsBefore(context, context.length, 2) : [];
     return this.nextWordsInternal(previousWords);
   }
   suggestInternal(word, previousWords) {
@@ -432,9 +476,8 @@ var SuggestEngine = class {
     const results = [];
     const index = previousWords.length ? this.ngramIndex(this.language) : null;
     if (index) {
-      const id = index.ids.get(previousWords[0].toLowerCase());
-      const slice = id === void 0 ? null : index.model.bigram(id);
-      if (slice) {
+      const collect = (slice) => {
+        if (!slice) return;
         for (let i = 0; i < slice.ids.length && results.length < limit; i++) {
           const successor = slice.ids[i];
           const key = index.lowered[successor];
@@ -442,7 +485,13 @@ var SuggestEngine = class {
           seen.add(key);
           results.push({ text: index.words[successor], insertSuffix: index.words[successor], source: "bundled" });
         }
+      };
+      const previousId = index.ids.get(previousWords[0].toLowerCase());
+      if (previousWords.length >= 2) {
+        const first = index.ids.get(previousWords[1].toLowerCase());
+        if (first !== void 0 && previousId !== void 0) collect(index.model.trigram(first, previousId));
       }
+      if (previousId !== void 0) collect(index.model.bigram(previousId));
     }
     if (this.userWordsStore) {
       for (const entry of this.userWordsStore.list()) {
@@ -479,15 +528,24 @@ var SuggestEngine = class {
   contextMatches(wanted, previousWords) {
     const index = this.ngramIndex(this.language);
     if (!index) return [];
-    const id = index.ids.get(previousWords[0].toLowerCase());
-    if (id === void 0) return [];
-    const slice = index.model.bigram(id);
-    if (!slice) return [];
     const matches = [];
-    for (let i = 0; i < slice.ids.length; i++) {
-      const successor = slice.ids[i];
-      if (index.lowered[successor].startsWith(wanted)) matches.push(index.words[successor]);
+    const seen = /* @__PURE__ */ new Set();
+    const collect = (slice) => {
+      if (!slice) return;
+      for (let i = 0; i < slice.ids.length; i++) {
+        const successor = slice.ids[i];
+        if (seen.has(successor)) continue;
+        if (!index.lowered[successor].startsWith(wanted)) continue;
+        seen.add(successor);
+        matches.push(index.words[successor]);
+      }
+    };
+    const previousId = index.ids.get(previousWords[0].toLowerCase());
+    if (previousWords.length >= 2) {
+      const first = index.ids.get(previousWords[1].toLowerCase());
+      if (first !== void 0 && previousId !== void 0) collect(index.model.trigram(first, previousId));
     }
+    if (previousId !== void 0) collect(index.model.bigram(previousId));
     return matches;
   }
   recordWord(word) {

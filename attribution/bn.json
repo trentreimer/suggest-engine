@@ -6,7 +6,12 @@
     "sourceUrl": "https://downloads.tatoeba.org/exports/per_language/ben/ben_sentences.tsv.bz2",
     "license": "CC-BY 2.0 FR",
     "sentences": 15813,
-    "tokens": 17443,
+    "tokens": 17442,
     "kept": 10000,
-    "generated": "2026-09-18"
+    "ngramContexts": 2856,
+    "ngramPairs": 6200,
+    "trigramContexts": 573,
+    "trigramPairs": 684,
+    "ngramBytes": 49316,
+    "generated": "2026-09-19"
 }

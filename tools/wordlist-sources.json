@@ -7,6 +7,10 @@
     "topN": 10000,
     "ngramTopK": 8,
     "ngramMinCount": 2,
+    "trigramTopK": 4,
+    "trigramMinPairCount": 3,
+    "trigramMinCount": 3,
+    "trigramMaxContexts": 50000,
     "compositionTopReadings": 5000,
     "compositionMaxCandidates": 10,
     "languages": {

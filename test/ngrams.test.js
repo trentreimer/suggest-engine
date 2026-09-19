@@ -24,11 +24,12 @@ function mockStorage() {
 
 const words = ['alpha', 'become', 'better', 'between', 'bewilder'];
 
-function modelFor(contexts, vocabulary = words, language = 'en') {
+function modelFor(contexts, vocabulary = words, language = 'en', trigramContexts = []) {
     return new NgramModel(encodeNgramModel({
         language,
         vocabHash: fnv1a(vocabulary.join('\n')),
         contexts,
+        trigramContexts,
     }));
 }
 
@@ -64,6 +65,65 @@ test('encoder round-trips through NgramModel', () => {
     assert.deepEqual([...model.bigram(1).counts], [9, 1]);
     assert.deepEqual([...model.bigram(3).ids], [1]);
     assert.equal(model.bigram(4), null);
+});
+
+test('encoder round-trips trigram sections through NgramModel', () => {
+    const buffer = encodeNgramModel({
+        language: 'en',
+        vocabHash: 1234,
+        contexts: [{ id: 0, successors: [{ id: 1, count: 5 }] }],
+        trigramContexts: [
+            { a: 1, b: 0, successors: [{ id: 2, count: 4 }] },
+            { a: 0, b: 1, successors: [{ id: 3, count: 2 }, { id: 4, count: 9 }] },
+        ],
+    });
+    const model = new NgramModel(buffer);
+
+    assert.equal(model.contextCount, 1);
+    assert.equal(model.entryCount, 1);
+    assert.equal(model.trigramContextCount, 2);
+    assert.equal(model.trigramEntryCount, 3);
+    assert.deepEqual([...model.bigram(0).ids], [1]);
+    assert.deepEqual([...model.trigram(0, 1).ids], [4, 3]);
+    assert.deepEqual([...model.trigram(0, 1).counts], [9, 2]);
+    assert.deepEqual([...model.trigram(1, 0).ids], [2]);
+    assert.equal(model.trigram(1, 1), null);
+});
+
+test('models without a trigram section report no trigram matches', () => {
+    const buffer = encodeNgramModel({ language: 'en', vocabHash: 0, contexts: [{ id: 0, successors: [{ id: 1, count: 1 }] }] });
+    const model = new NgramModel(buffer);
+
+    assert.equal(model.trigramContextCount, 0);
+    assert.equal(model.trigram(0, 1), null);
+});
+
+test('a truncated trigram section is rejected', () => {
+    const buffer = encodeNgramModel({
+        language: 'en',
+        vocabHash: 0,
+        contexts: [],
+        trigramContexts: [{ a: 0, b: 1, successors: [{ id: 2, count: 3 }] }],
+    });
+    const view = new DataView(buffer.slice(0));
+    const languageLength = view.getUint8(6);
+    const tableStart = 13 + languageLength;
+    const sectionCount = view.getUint16(tableStart - 2, true);
+    let trigramEntry = -1;
+
+    for (let i = 0; i < sectionCount; i ++) {
+        if (view.getUint8(tableStart + i * 10) === 2) trigramEntry = tableStart + i * 10;
+    }
+
+    assert.notEqual(trigramEntry, -1);
+    view.setUint32(trigramEntry + 6, 4, true);
+
+    assert.throws(() => new NgramModel(view.buffer), /truncated trigram/);
+});
+
+test('encoder rejects duplicate and invalid trigram contexts', () => {
+    assert.throws(() => encodeNgramModel({ language: 'en', vocabHash: 0, trigramContexts: [{ a: 1, b: 2, successors: [] }, { a: 1, b: 2, successors: [] }] }), /Duplicate trigram/);
+    assert.throws(() => encodeNgramModel({ language: 'en', vocabHash: 0, trigramContexts: [{ a: -1, b: 2, successors: [] }] }), /Invalid/);
 });
 
 test('encoder rejects duplicate contexts and invalid ids', () => {
@@ -109,6 +169,62 @@ test('context matches order by count and ignore non-matching prefixes', async ()
     assert.deepEqual(engine.suggest('be', 'alpha ').map(s => s.text), ['between', 'better', 'become', 'bewilder']);
     assert.deepEqual(engine.suggest('g', 'alpha '), []);
     assert.deepEqual(engine.suggest('be', 'delta ').map(s => s.text), ['become', 'better', 'between', 'bewilder']);
+});
+
+const betweenBetter = { id: 3, successors: [{ id: 2, count: 5 }] };
+const alphaTrigram = [{ a: 0, b: 3, successors: [{ id: 1, count: 9 }] }];
+
+test('trigram matches precede bigram-only matches', async () => {
+    const engine = await fixtureEngine();
+
+    await engine.addNgramModel(modelFor([...alphaBetween, betweenBetter], words, 'en', alphaTrigram));
+
+    const suggestions = engine.suggest('be', 'alpha between ');
+
+    assert.deepEqual(suggestions.map(s => s.text), ['become', 'better', 'between', 'bewilder']);
+    assert.deepEqual(suggestions.map(s => s.source), ['bundled', 'bundled', 'bundled', 'bundled']);
+});
+
+test('without a trigram match the bigram context still orders suggestions', async () => {
+    const engine = await fixtureEngine();
+
+    await engine.addNgramModel(modelFor([...alphaBetween, betweenBetter]));
+
+    assert.deepEqual(engine.suggest('be', 'alpha between ').map(s => s.text), ['better', 'become', 'between', 'bewilder']);
+    assert.deepEqual(engine.suggest('be', 'delta between ').map(s => s.text), ['better', 'become', 'between', 'bewilder']);
+});
+
+test('trigram matches, then bigram matches, then user words, then library', async () => {
+    const engine = await fixtureEngine();
+
+    engine.recordWord('bewilder');
+    engine.recordWord('bewilder');
+    await engine.addNgramModel(modelFor([...alphaBetween, betweenBetter], words, 'en', alphaTrigram));
+
+    assert.deepEqual(engine.suggest('be', 'alpha between ').map(s => s.text), ['become', 'better', 'bewilder', 'between']);
+    assert.deepEqual(engine.suggest('be', 'alpha between ').map(s => s.source), ['bundled', 'bundled', 'user-words', 'bundled']);
+});
+
+test('nextWords backs off from trigram to bigram and then user words', async () => {
+    const engine = await fixtureEngine({ maxSuggestions: 4 });
+
+    engine.recordWord('bewilder');
+    engine.recordWord('bewilder');
+    await engine.addNgramModel(modelFor([...alphaBetween, betweenBetter], words, 'en', alphaTrigram));
+
+    const next = engine.nextWords('alpha between');
+
+    assert.deepEqual(next.map(s => s.text), ['become', 'better', 'bewilder']);
+    assert.deepEqual(next.map(s => s.source), ['bundled', 'bundled', 'user-words']);
+});
+
+test('suggestAt uses the two preceding words for trigram context', async () => {
+    const engine = await fixtureEngine();
+
+    await engine.addNgramModel(modelFor([...alphaBetween, betweenBetter], words, 'en', alphaTrigram));
+
+    assert.deepEqual(engine.suggestAt('alpha between be', 16).map(s => s.text), ['become', 'better', 'between', 'bewilder']);
+    assert.deepEqual(engine.suggestAt('alpha between b', 15).map(s => s.text), ['become', 'better', 'between', 'bewilder']);
 });
 
 test('suggest without context is identical with and without a model', async () => {

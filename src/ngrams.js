@@ -1,6 +1,7 @@
 export const NGRAM_MAGIC = 0x474e4553;
 export const NGRAM_VERSION = 1;
 export const NGRAM_BIGRAM_SECTION = 1;
+export const NGRAM_TRIGRAM_SECTION = 2;
 
 const SECTION_ENTRY_BYTES = 10;
 
@@ -32,6 +33,12 @@ export class NgramModel {
         this.offsets = null;
         this.successorIds = null;
         this.counts = null;
+        this.trigramContextCount = 0;
+        this.trigramEntryCount = 0;
+        this.trigramKeys = null;
+        this.trigramOffsets = null;
+        this.trigramSuccessorIds = null;
+        this.trigramCounts = null;
 
         this.parseHeader();
         this.parseSections();
@@ -81,6 +88,7 @@ export class NgramModel {
             }
 
             if (id === NGRAM_BIGRAM_SECTION) this.parseBigramSection(offset, length);
+            else if (id === NGRAM_TRIGRAM_SECTION) this.parseTrigramSection(offset, length);
         }
     }
 
@@ -125,6 +133,54 @@ export class NgramModel {
             }
 
             if (value < id) low = mid + 1;
+            else high = mid - 1;
+        }
+
+        return null;
+    }
+
+    parseTrigramSection(offset, length) {
+        if (length < 8) throw new Error('Invalid ngram model: truncated trigram section');
+
+        const view = new DataView(this.buffer);
+        const contextCount = view.getUint32(offset, true);
+        const entryCount = view.getUint32(offset + 4, true);
+        const keysStart = offset + 8;
+        const offsetsStart = keysStart + contextCount * 4;
+        const successorsStart = offsetsStart + (contextCount + 1) * 4;
+        const countsStart = successorsStart + entryCount * 2;
+
+        if (countsStart + entryCount * 2 > offset + length) throw new Error('Invalid ngram model: truncated trigram section');
+
+        this.trigramContextCount = contextCount;
+        this.trigramEntryCount = entryCount;
+        this.trigramKeys = new Uint16Array(this.buffer, keysStart, contextCount * 2);
+        this.trigramOffsets = new Uint32Array(this.buffer, offsetsStart, contextCount + 1);
+        this.trigramSuccessorIds = new Uint16Array(this.buffer, successorsStart, entryCount);
+        this.trigramCounts = new Uint16Array(this.buffer, countsStart, entryCount);
+    }
+
+    trigram(first, second) {
+        const keys = this.trigramKeys;
+
+        if (!keys || !Number.isInteger(first) || !Number.isInteger(second)) return null;
+
+        let low = 0;
+        let high = this.trigramContextCount - 1;
+
+        while (low <= high) {
+            const mid = (low + high) >> 1;
+            const a = keys[mid * 2];
+            const b = keys[mid * 2 + 1];
+
+            if (a === first && b === second) {
+                const start = this.trigramOffsets[mid];
+                const end = this.trigramOffsets[mid + 1];
+
+                return { ids: this.trigramSuccessorIds.subarray(start, end), counts: this.trigramCounts.subarray(start, end) };
+            }
+
+            if (a < first || (a === first && b < second)) low = mid + 1;
             else high = mid - 1;
         }
 

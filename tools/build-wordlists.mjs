@@ -6,6 +6,7 @@ import { Readable } from 'node:stream';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { encodeNgramModel, fnv1a } from './ngram-format.mjs';
+import { parseWordList } from '../src/word-lists.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const libDir = join(__dirname, '..');
@@ -54,15 +55,21 @@ function escapeForCharacterClass(chars) {
     return chars.replace(/[\\\]\^-]/g, '\\$&');
 }
 
+const invalidTokenRegex = /[^\p{L}\p{M}\p{N}'\-]/u;
+
 function tokenize(sentence, script) {
     const normalized = sentence.normalize('NFC').toLowerCase();
-    const tokenRegex = new RegExp(`[${scriptRanges[script]}\\p{M}${escapeForCharacterClass("'\\-")}]+`, 'gu');
+    const tokenRegex = new RegExp(`[${scriptRanges[script]}\\p{M}${escapeForCharacterClass("'-")}]+`, 'gu');
     const tokens = [];
 
     for (const match of normalized.matchAll(tokenRegex)) {
         const token = match[0].replace(/^['\-]+|['\-]+$/g, '');
 
-        if (token.length >= 2) tokens.push(token);
+        if (token.length < 2) continue;
+        // Script classes also match script-specific punctuation; keep tokens parseWordList preserves.
+        if (invalidTokenRegex.test(token)) continue;
+
+        tokens.push(token);
     }
 
     return tokens;
@@ -346,6 +353,8 @@ function attributionRecord(stat, generated) {
         if (stat.ngrams) {
             record.ngramContexts = stat.ngrams.contexts;
             record.ngramPairs = stat.ngrams.pairs;
+            record.trigramContexts = stat.ngrams.trigramContexts;
+            record.trigramPairs = stat.ngrams.trigramPairs;
             record.ngramBytes = stat.ngrams.bytes;
         }
     } else {
@@ -400,7 +409,7 @@ function regenerateAttribution() {
     const records = loadAttributionRecords();
     const wordRows = records
         .filter(record => record.mode === 'words')
-        .map(record => `| ${record.code} | \`${record.sourceFile}\` | ${record.license} | ${record.sentences.toLocaleString('en')} | ${record.kept.toLocaleString('en')} | ${record.ngramContexts ? record.ngramContexts.toLocaleString('en') : '—'} | ${record.ngramPairs ? record.ngramPairs.toLocaleString('en') : '—'} | ${record.generated} |`)
+        .map(record => `| ${record.code} | \`${record.sourceFile}\` | ${record.license} | ${record.sentences.toLocaleString('en')} | ${record.kept.toLocaleString('en')} | ${record.ngramContexts ? record.ngramContexts.toLocaleString('en') : '—'} | ${record.ngramPairs ? record.ngramPairs.toLocaleString('en') : '—'} | ${record.trigramContexts ? record.trigramContexts.toLocaleString('en') : '—'} | ${record.trigramPairs ? record.trigramPairs.toLocaleString('en') : '—'} | ${record.generated} |`)
         .join('\n');
     const compositionRows = records
         .filter(record => record.mode === 'composition')
@@ -422,8 +431,8 @@ Bundled lists in \`languages/\` (word-list modules and \`<code>.ngram.bin\`
 bigram context models) and reference copies in the host project
 (\`languages/<code>/autocomplete.txt\`, \`languages/<code>/ngrams.bin\`).
 
-| Language | Source file | License | Sentences | Words kept | Bigram contexts | Bigram pairs | Generated |
-|---|---|---|---|---|---|---|---|
+| Language | Source file | License | Sentences | Words kept | Bigram contexts | Bigram pairs | Trigram contexts | Trigram pairs | Generated |
+|---|---|---|---|---|---|---|---|---|---|
 ${wordRows}
 
 ## Composition data
@@ -464,12 +473,17 @@ frequency counting, profanity filtering (\`tools/profanity-filter.txt\`,
 project-owned and user-editable), frequency-descending sort with alphabetical
 tie-break, top ${config.topN} retained.
 
-Context models: bigram counts accumulated over the same sentence dumps between
-consecutive retained vocabulary words within a sentence; successors occurring
-fewer than ${config.ngramMinCount ?? 2} times are dropped and at most
+Context models: bigram counts are accumulated over the same sentence dumps
+between consecutive retained vocabulary words within a sentence; successors
+occurring fewer than ${config.ngramMinCount ?? 2} times are dropped and at most
 ${config.ngramTopK ?? 8} successors are kept per context, ranked by count with an
-alphabetical tie-break. Models reference positions in the bundled word list and
-are validated against it by hash at load time.
+alphabetical tie-break. Trigram counts are accumulated for word pairs occurring
+at least ${config.trigramMinPairCount ?? 3} times, capped at the
+${config.trigramMaxContexts ?? 50000} most frequent pairs per language, with
+successors occurring fewer than ${config.trigramMinCount ?? 3} times dropped and at
+most ${config.trigramTopK ?? 4} successors kept per pair. Both tables
+live in \`languages/<code>.ngram.bin\` as separate sections and reference positions in
+the bundled word list, validated against it by hash at load time.
 
 Composition data: CJK word segmentation via \`Intl.Segmenter\`; for Japanese,
 kana readings are taken from the furigana annotations in the transcriptions
@@ -573,6 +587,88 @@ function compareWords(a, b) {
     return a < b ? -1 : a > b ? 1 : 0;
 }
 
+async function countTrigrams(code, source, dump, kept, pairCounts, vocabularySize, idByWord) {
+    const trigramTopK = config.trigramTopK ?? 4;
+    const trigramMinPairCount = config.trigramMinPairCount ?? 3;
+    const trigramMinCount = config.trigramMinCount ?? 3;
+    const trigramMaxContexts = config.trigramMaxContexts ?? 50000;
+
+    if (trigramTopK <= 0) return [];
+
+    const candidates = [];
+
+    for (const [key, count] of pairCounts) {
+        if (count >= trigramMinPairCount) candidates.push([key, count]);
+    }
+
+    if (!candidates.length) return [];
+
+    candidates.sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+    const selected = new Set(candidates.slice(0, trigramMaxContexts).map(([key]) => key));
+
+    console.log(`[${code}] counting trigrams (${selected.size} selected pairs)`);
+
+    const trigramCounts = new Map();
+
+    await decompressLines(dump.path, line => {
+        const text = extractText(line);
+
+        if (!text) return;
+
+        let previous = -1;
+        let previous2 = -1;
+
+        for (const token of tokenize(text, source.script)) {
+            const id = idByWord.get(token);
+
+            if (id === undefined) {
+                previous = -1;
+                previous2 = -1;
+                continue;
+            }
+
+            if (previous !== -1 && previous2 !== -1) {
+                const pairKey = previous2 * vocabularySize + previous;
+
+                if (selected.has(pairKey)) {
+                    const key = pairKey * vocabularySize + id;
+                    trigramCounts.set(key, (trigramCounts.get(key) || 0) + 1);
+                }
+            }
+
+            previous2 = previous;
+            previous = id;
+        }
+    });
+
+    const byPair = new Map();
+
+    for (const [key, count] of trigramCounts) {
+        const pair = Math.floor(key / vocabularySize);
+        const successor = key % vocabularySize;
+        let list = byPair.get(pair);
+
+        if (!list) byPair.set(pair, list = []);
+
+        list.push({ id: successor, count });
+    }
+
+    const contexts = [];
+
+    for (const pair of [...byPair.keys()].sort((a, b) => a - b)) {
+        const successors = byPair.get(pair)
+            .filter(entry => entry.count >= trigramMinCount)
+            .sort((a, b) => b.count - a.count || compareWords(kept[a.id][0], kept[b.id][0]) || a.id - b.id)
+            .slice(0, trigramTopK);
+
+        if (successors.length) {
+            contexts.push({ a: Math.floor(pair / vocabularySize), b: pair % vocabularySize, successors });
+        }
+    }
+
+    return contexts;
+}
+
 async function buildNgrams(code, source, dump, kept) {
     const vocabularySize = kept.length;
     const topK = config.ngramTopK ?? 8;
@@ -609,6 +705,7 @@ async function buildNgrams(code, source, dump, kept) {
         }
     });
 
+    const trigramContexts = await countTrigrams(code, source, dump, kept, pairCounts, vocabularySize, idByWord);
     const byContext = new Map();
 
     for (const [key, count] of pairCounts) {
@@ -634,7 +731,7 @@ async function buildNgrams(code, source, dump, kept) {
 
     const words = kept.map(([word]) => word);
     const buffer = contexts.length
-        ? Buffer.from(encodeNgramModel({ language: code, vocabHash: fnv1a(words.join('\n')), contexts }))
+        ? Buffer.from(encodeNgramModel({ language: code, vocabHash: fnv1a(words.join('\n')), contexts, trigramContexts }))
         : null;
     const bundledPath = join(bundledDir, `${code}.ngram.bin`);
     const hostPath = join(hostLanguagesDir, code, 'ngrams.bin');
@@ -648,10 +745,17 @@ async function buildNgrams(code, source, dump, kept) {
     }
 
     const pairs = contexts.reduce((total, context) => total + context.successors.length, 0);
+    const trigramPairs = trigramContexts.reduce((total, context) => total + context.successors.length, 0);
 
-    console.log(`[${code}] ${contexts.length} bigram contexts, ${pairs} pairs (${buffer ? buffer.byteLength.toLocaleString('en') : 0} bytes)`);
+    console.log(`[${code}] ${contexts.length} bigram contexts, ${pairs} pairs; ${trigramContexts.length} trigram contexts, ${trigramPairs} pairs (${buffer ? buffer.byteLength.toLocaleString('en') : 0} bytes)`);
 
-    return { contexts: contexts.length, pairs, bytes: buffer ? buffer.byteLength : 0 };
+    return {
+        contexts: contexts.length,
+        pairs,
+        trigramContexts: trigramContexts.length,
+        trigramPairs,
+        bytes: buffer ? buffer.byteLength : 0,
+    };
 }
 
 async function buildWords(code, source, dump, profanity, stats) {
@@ -676,6 +780,14 @@ async function buildWords(code, source, dump, profanity, stats) {
     const filtered = entries.filter(([word]) => !banned.has(word));
     const kept = filtered.slice(0, config.topN);
     const text = kept.map(([word]) => word).join('\n') + '\n';
+    const roundTripped = parseWordList(text);
+
+    if (roundTripped.length !== kept.length || roundTripped.some((word, i) => word !== kept[i][0])) {
+        const parsed = new Set(roundTripped);
+        const offending = kept.map(([word]) => word).filter(word => !parsed.has(word));
+
+        throw new Error(`[${code}] word list does not survive parseWordList (${offending.length} lost): ${offending.slice(0, 5).join(', ')}`);
+    }
 
     console.log(`[${code}] ${dump.sentences} sentences, ${counts.size} unique tokens, ${kept.length} kept (${entries.length - filtered.length} filtered)`);
 

@@ -5,7 +5,13 @@
     "sourceFile": "rus_sentences_CC0.tsv.bz2",
     "sourceUrl": "https://downloads.tatoeba.org/exports/per_language/rus/rus_sentences_CC0.tsv.bz2",
     "license": "CC0 1.0",
-    "sentences": 23035,
+    "sentences": 23036,
+    "tokens": 29945,
     "kept": 10000,
-    "generated": "2026-09-17"
+    "ngramContexts": 4400,
+    "ngramPairs": 9008,
+    "trigramContexts": 2039,
+    "trigramPairs": 2462,
+    "ngramBytes": 88652,
+    "generated": "2026-09-19"
 }

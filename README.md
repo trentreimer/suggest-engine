@@ -106,16 +106,18 @@ suggestion all count as completion).
 ### Context ranking
 
 When an ngram model is loaded for the active language and a context is passed,
-matches predicted by the preceding word are promoted first (most frequent
-continuation first), then matching user words, then remaining matches in source
+matches predicted by the two preceding words (trigram) are promoted first,
+followed by matches predicted by the preceding word alone (bigram), each in
+count order; matching user words come next, then remaining matches in source
 order. Without context — or without an ngram model, or when the model does not
 match the bundled word list — results are exactly the frequency-ranked ones:
 
 | Priority | `suggest(word)` | `suggest(word, context)` with a model |
 |---|---|---|
-| 1 | user words (by frequency) | context matches (bigram count order) |
-| 2 | sources in registration order | user words (by frequency) |
-| 3 | — | sources in registration order |
+| 1 | user words (by frequency) | trigram matches (count order) |
+| 2 | sources in registration order | bigram-only matches (count order) |
+| 3 | — | user words (by frequency) |
+| 4 | — | sources in registration order |
 
 Models are compact and validated by hash at load time; a mismatched or missing
 model silently disables context ranking. `suggestAt(text, caret)` derives both
@@ -163,9 +165,9 @@ Defaults for unspecified properties: `storagePrefix: 'suggest-engine'`,
 | `loadBundledNgrams(baseUrl?)` | Fetch the bundled `<language>.ngram.bin` (resolves `false` when none ships); the default base URL resolves relative to the module, so pass one where no module URL is available (for example Node) |
 | `wordBefore(text, caret)` | Word ending at the caret (`'`/`-`-aware) |
 | `wordsBefore(text, index, count)` | Up to `count` words ending before `index`, nearest first (used for context) |
-| `suggest(word, context?)` | Ranked suggestions: with `context` (the text before the current word) and a matching ngram model, context matches first (bigram count order), then user words (frequency order), then word lists **in registration order** — word list order is suggestion priority, so ship lists most-common-first; deduped case-insensitively; `text` carries the word's own casing, `insertSuffix` is what to insert after the typed prefix |
+| `suggest(word, context?)` | Ranked suggestions: with `context` (the text before the current word) and a matching ngram model, trigram matches first (count order), then bigram-only matches, then user words (frequency order), then word lists **in registration order** — word list order is suggestion priority, so ship lists most-common-first; deduped case-insensitively; `text` carries the word's own casing, `insertSuffix` is what to insert after the typed prefix |
 | `suggestAt(text, caret)` | `wordBefore` + preceding-word context + `suggest` in one call; the host's normal entry point |
-| `nextWords(context)` | Likely next words when no prefix is typed: bigram successors of the context's last word, then user words by frequency |
+| `nextWords(context)` | Likely next words when no prefix is typed: trigram successors of the last two words, then bigram successors of the last word, then user words by frequency |
 | `recordWord(word)` | Count a completed word (validates letters/marks plus `'`/`-`, minimum length 2) |
 | `addWord(word)` | Add immediately suggestible (manual entry) |
 | `userWordsEnabled` | `true` while the user-words component is active (getter) |
@@ -195,10 +197,10 @@ regenerating from raw word-list text is a copy-paste into a template literal.
 
 ### Bundled context models
 
-Bigram context models ship alongside the word lists as
-`languages/<code>.ngram.bin` (currently `en`; other languages fall back to
-frequency ranking until regenerated) and are copied to `dist/languages/` so the
-CDN build can fetch them next to the bundle:
+Context models ship alongside the word lists as `languages/<code>.ngram.bin`
+for all ten word-list languages — a bigram section plus a trigram section where
+the corpus supports one — and are copied to `dist/languages/` so the CDN build
+can fetch them next to the bundle:
 
 ```js
 await engine.loadBundledNgrams();         // current language; false if none bundled
@@ -210,11 +212,13 @@ await engine.loadBundledNgrams('https://cdn.example/languages/');   // explicit 
 that default is a `file:` URL, which Node's `fetch` rejects — pass an `http(s)`
 base URL there, or use `addNgramModel()` with the file contents (see
 [Server-side](#server-side)). Models are
-compact typed arrays decoded without parsing (about 120KB for English: ~6,900
-contexts, ~20,000 pairs), reference positions in the bundled word list, and are
-validated against it by hash at load time. Loading is optional and asynchronous;
-suggestions keep working without it, and context ranking simply switches on once
-the model and the bundled list for that language are both present.
+compact typed arrays decoded without parsing, reference positions in the bundled
+word list, and are validated against it by hash at load time. Sizes range from
+about 50KB (bn) to about 990KB (de, which is also the most expensive single
+fetch); an app only loads the language it is using. Loading is optional and
+asynchronous; suggestions keep working without it, and context ranking simply
+switches on once the model and the bundled list for that language are both
+present.
 
 Corpus provenance, licensing and generation details are documented in
 [ATTRIBUTION.md](ATTRIBUTION.md).
@@ -223,7 +227,7 @@ Corpus provenance, licensing and generation details are documented in
 
 **Prefer per-language builds.** `node tools/build-wordlists.mjs <code>` (for
 example `node tools/build-wordlists.mjs bn`) adds or updates just that one
-language: its bundled word list or composition file, its bigram context model
+language: its bundled word list or composition file, its context model
 (`languages/<code>.ngram.bin`), the host project's reference copies
 (`autocomplete.txt`, `ngrams.bin`), and its attribution record
 (`attribution/<code>.json`).
@@ -235,7 +239,8 @@ backup.
 A full build (`node tools/build-wordlists.mjs`, no arguments) re-downloads and
 regenerates every language and is only needed after changing global
 configuration in `tools/wordlist-sources.json` (for example `topN`,
-`cc0MinSentences`, `ngramTopK`, or `ngramMinCount`).
+`cc0MinSentences`, `ngramTopK`, `ngramMinCount`, `trigramTopK`,
+`trigramMinPairCount`, `trigramMinCount`, or `trigramMaxContexts`).
 
 The host project's reference copies are written to a sibling `click.totype.org`
 checkout by default; set `HOST_DIR=/path/to/host` to target a different host

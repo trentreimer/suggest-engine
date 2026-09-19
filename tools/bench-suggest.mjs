@@ -24,9 +24,15 @@ for (let id = 0; id < contextCount; id ++) {
     contexts.push({ id, successors });
 }
 
-const buffer = encodeNgramModel({ language: 'en', vocabHash: fnv1a(words.join('\n')), contexts });
+const trigramContexts = contexts.slice(0, contextCount / 2).map(context => ({
+    a: context.id,
+    b: (context.id + 1) % vocabularySize,
+    successors: context.successors.slice(0, 4),
+}));
 
-console.log(`vocabulary: ${vocabularySize} words, model: ${contextCount} contexts, ${(buffer.byteLength / 1024).toFixed(0)} KB`);
+const buffer = encodeNgramModel({ language: 'en', vocabHash: fnv1a(words.join('\n')), contexts, trigramContexts });
+
+console.log(`vocabulary: ${vocabularySize} words, model: ${contextCount} bigram contexts, ${trigramContexts.length} trigram contexts (${(buffer.byteLength / 1024).toFixed(0)} KB)`);
 
 const engine = new SuggestEngine({ language: 'en', maxSuggestions: 5 });
 
@@ -35,6 +41,7 @@ await engine.addNgramModel(new NgramModel(buffer));
 
 const contextWord = words[0];
 const contextText = `${contextWord} `;
+const trigramText = `${words[1]} ${words[0]} `;
 
 function bench(label, fn) {
     for (let i = 0; i < warmup; i ++) fn(i);
@@ -51,5 +58,7 @@ function bench(label, fn) {
 bench('suggest("w") no context', () => engine.suggest('w'));
 bench('suggest("w8") no context', () => engine.suggest('w8'));
 bench(`suggest("w", "${contextWord} ")`, () => engine.suggest('w', contextText));
+bench('suggest with trigram context', () => engine.suggest('w', trigramText));
 bench('suggestAt end of text', () => engine.suggestAt(`foo ${contextText}w`, 4 + contextText.length + 1));
-bench('nextWords', () => engine.nextWords(contextText));
+bench('nextWords bigram', () => engine.nextWords(contextText));
+bench('nextWords trigram', () => engine.nextWords(trigramText.trimEnd()));

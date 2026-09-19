@@ -1,4 +1,4 @@
-import { NGRAM_MAGIC, NGRAM_VERSION, NGRAM_BIGRAM_SECTION, fnv1a } from '../src/ngrams.js';
+import { NGRAM_MAGIC, NGRAM_VERSION, NGRAM_BIGRAM_SECTION, NGRAM_TRIGRAM_SECTION, fnv1a } from '../src/ngrams.js';
 
 export { fnv1a };
 
@@ -8,6 +8,10 @@ const SECTION_ENTRY_BYTES = 10;
 
 function compareIds(a, b) {
     return a.id - b.id;
+}
+
+function align4(value) {
+    return value + ((4 - (value % 4)) % 4);
 }
 
 function encodeLanguage(language) {
@@ -27,45 +31,71 @@ function encodeLanguage(language) {
     return bytes;
 }
 
+function validateId(id, label) {
+    if (!Number.isInteger(id) || id < 0 || id > MAX_WORD_ID) throw new Error(`Invalid ${label} id: ${id}`);
+
+    return id;
+}
+
+function normalizeSuccessors(successors) {
+    return successors
+        .filter(successor => successor.count > 0)
+        .sort((a, b) => b.count - a.count || a.id - b.id)
+        .map(successor => ({ id: validateId(successor.id, 'successor'), count: Math.min(MAX_COUNT, successor.count) }));
+}
+
 function normalizeContexts(contexts) {
     const seen = new Set();
 
     return contexts.map(context => {
-        if (!Number.isInteger(context.id) || context.id < 0 || context.id > MAX_WORD_ID) {
-            throw new Error(`Invalid bigram context id: ${context.id}`);
-        }
+        const id = validateId(context.id, 'bigram context');
 
-        if (seen.has(context.id)) throw new Error(`Duplicate bigram context id: ${context.id}`);
+        if (seen.has(id)) throw new Error(`Duplicate bigram context id: ${id}`);
 
-        seen.add(context.id);
+        seen.add(id);
 
-        const successors = context.successors
-            .filter(successor => successor.count > 0)
-            .sort((a, b) => b.count - a.count || a.id - b.id)
-            .map(successor => {
-                if (!Number.isInteger(successor.id) || successor.id < 0 || successor.id > MAX_WORD_ID) {
-                    throw new Error(`Invalid bigram successor id: ${successor.id}`);
-                }
-
-                return { id: successor.id, count: Math.min(MAX_COUNT, successor.count) };
-            });
-
-        return { id: context.id, successors };
+        return { id, successors: normalizeSuccessors(context.successors) };
     }).sort(compareIds);
 }
 
-export function encodeNgramModel({ language, vocabHash, contexts = [] }) {
+function normalizeTrigramContexts(contexts) {
+    const seen = new Set();
+
+    return contexts.map(context => {
+        const first = validateId(context.a, 'trigram context');
+        const second = validateId(context.b, 'trigram context');
+        const key = first * (MAX_WORD_ID + 1) + second;
+
+        if (seen.has(key)) throw new Error(`Duplicate trigram context: ${first}, ${second}`);
+
+        seen.add(key);
+
+        return { a: first, b: second, successors: normalizeSuccessors(context.successors) };
+    }).sort((x, y) => x.a - y.a || x.b - y.b);
+}
+
+function bigramSectionLength(contexts, entryCount) {
+    return 8 + contexts.length * 2 + (contexts.length % 2) * 2 + (contexts.length + 1) * 4 + entryCount * 4;
+}
+
+function trigramSectionLength(contexts, entryCount) {
+    return 8 + contexts.length * 4 + (contexts.length + 1) * 4 + entryCount * 4;
+}
+
+export function encodeNgramModel({ language, vocabHash, contexts = [], trigramContexts = [] }) {
     const languageBytes = encodeLanguage(language);
-    const normalized = normalizeContexts(contexts);
-    const entryCount = normalized.reduce((total, context) => total + context.successors.length, 0);
-    const contextBytes = normalized.length * 2;
-    const padding = (normalized.length % 2) * 2;
-    const offsetsBytes = (normalized.length + 1) * 4;
-    const entriesBytes = entryCount * 4;
-    const sectionLength = 8 + contextBytes + padding + offsetsBytes + entriesBytes;
-    const headerLength = 13 + languageBytes.length + SECTION_ENTRY_BYTES;
-    const sectionOffset = headerLength + ((4 - (headerLength % 4)) % 4);
-    const buffer = new ArrayBuffer(sectionOffset + sectionLength);
+    const bigrams = normalizeContexts(contexts);
+    const trigrams = normalizeTrigramContexts(trigramContexts);
+    const bigramEntries = bigrams.reduce((total, context) => total + context.successors.length, 0);
+    const trigramEntries = trigrams.reduce((total, context) => total + context.successors.length, 0);
+    const bigramLength = bigramSectionLength(bigrams, bigramEntries);
+    const trigramLength = trigrams.length ? trigramSectionLength(trigrams, trigramEntries) : 0;
+    const sectionCount = trigrams.length ? 2 : 1;
+    const headerLength = 13 + languageBytes.length + sectionCount * SECTION_ENTRY_BYTES;
+    const bigramOffset = align4(headerLength);
+    const trigramOffset = trigrams.length ? align4(bigramOffset + bigramLength) : 0;
+    const total = trigrams.length ? trigramOffset + trigramLength : bigramOffset + bigramLength;
+    const buffer = new ArrayBuffer(total);
     const view = new DataView(buffer);
     let cursor = 0;
 
@@ -80,47 +110,95 @@ export function encodeNgramModel({ language, vocabHash, contexts = [] }) {
 
     view.setUint32(cursor, vocabHash >>> 0, true);
     cursor += 4;
-    view.setUint16(cursor, 1, true);
+    view.setUint16(cursor, sectionCount, true);
     cursor += 2;
 
     view.setUint8(cursor, NGRAM_BIGRAM_SECTION);
     cursor += 2;
-    view.setUint32(cursor, sectionOffset, true);
+    view.setUint32(cursor, bigramOffset, true);
     cursor += 4;
-    view.setUint32(cursor, sectionLength, true);
+    view.setUint32(cursor, bigramLength, true);
+    cursor += 4;
 
-    let offset = sectionOffset;
+    if (trigrams.length) {
+        view.setUint8(cursor, NGRAM_TRIGRAM_SECTION);
+        cursor += 2;
+        view.setUint32(cursor, trigramOffset, true);
+        cursor += 4;
+        view.setUint32(cursor, trigramLength, true);
+    }
 
-    view.setUint32(offset, normalized.length, true);
-    view.setUint32(offset + 4, entryCount, true);
+    let offset = bigramOffset;
+
+    view.setUint32(offset, bigrams.length, true);
+    view.setUint32(offset + 4, bigramEntries, true);
     offset += 8;
 
-    for (const context of normalized) {
+    for (const context of bigrams) {
         view.setUint16(offset, context.id, true);
         offset += 2;
     }
 
-    offset += padding;
+    offset += (bigrams.length % 2) * 2;
 
     let entry = 0;
 
     view.setUint32(offset, 0, true);
     offset += 4;
 
-    for (const context of normalized) {
+    for (const context of bigrams) {
         entry += context.successors.length;
         view.setUint32(offset, entry, true);
         offset += 4;
     }
 
-    for (const context of normalized) {
+    for (const context of bigrams) {
         for (const successor of context.successors) {
             view.setUint16(offset, successor.id, true);
             offset += 2;
         }
     }
 
-    for (const context of normalized) {
+    for (const context of bigrams) {
+        for (const successor of context.successors) {
+            view.setUint16(offset, successor.count, true);
+            offset += 2;
+        }
+    }
+
+    if (!trigrams.length) return buffer;
+
+    offset = trigramOffset;
+
+    view.setUint32(offset, trigrams.length, true);
+    view.setUint32(offset + 4, trigramEntries, true);
+    offset += 8;
+
+    for (const context of trigrams) {
+        view.setUint16(offset, context.a, true);
+        view.setUint16(offset + 2, context.b, true);
+        offset += 4;
+    }
+
+    entry = 0;
+
+    view.setUint32(offset, 0, true);
+    offset += 4;
+
+    for (const context of trigrams) {
+        entry += context.successors.length;
+        view.setUint32(offset, entry, true);
+        offset += 4;
+    }
+
+    for (const context of trigrams) {
+        for (const successor of context.successors) {
+            view.setUint16(offset, successor.id, true);
+            offset += 2;
+        }
+    }
+
+    for (const context of trigrams) {
         for (const successor of context.successors) {
             view.setUint16(offset, successor.count, true);
             offset += 2;

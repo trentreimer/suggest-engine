@@ -5,7 +5,13 @@
     "sourceFile": "por_sentences.tsv.bz2",
     "sourceUrl": "https://downloads.tatoeba.org/exports/per_language/por/por_sentences.tsv.bz2",
     "license": "CC-BY 2.0 FR",
-    "sentences": 444455,
+    "sentences": 444636,
+    "tokens": 78477,
     "kept": 10000,
-    "generated": "2026-09-17"
+    "ngramContexts": 9576,
+    "ngramPairs": 48409,
+    "trigramContexts": 27956,
+    "trigramPairs": 52946,
+    "ngramBytes": 686584,
+    "generated": "2026-09-19"
 }

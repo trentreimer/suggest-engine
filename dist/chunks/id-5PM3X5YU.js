@@ -67,8 +67,8 @@ melakukan
 sekarang
 siapa
 sebuah
-berapa
 baik
+berapa
 saja
 satu
 menjadi
@@ -79,13 +79,13 @@ belum
 ia
 karena
 waktu
-bahwa
 dua
 anak
+bahwa
 baru
 tolong
-sekali
 juga
+sekali
 kalian
 tiga
 berbicara
@@ -101,9 +101,9 @@ sama
 terlalu
 bagaimana
 mungkin
+membeli
 selalu
 inggris
-membeli
 kemarin
 bekerja
 sakit
@@ -122,8 +122,8 @@ lalu
 daripada
 hidup
 sesuatu
-pun
 setiap
+pun
 air
 besok
 mulai
@@ -135,9 +135,9 @@ jepang
 atas
 atau
 beberapa
+kembali
 kepada
 prancis
-kembali
 tapi
 ketika
 membuat
@@ -159,16 +159,16 @@ jalan
 nama
 menunggu
 bulan
-kali
 luar
+kali
 begitu
 benar
 tetapi
 kecil
 pagi
 ibu
-menulis
 melakukannya
+menulis
 tak
 benar-benar
 oleh
@@ -178,8 +178,8 @@ bagus
 katakan
 berada
 setelah
-hujan
 mati
+hujan
 pulang
 tua
 makanan
@@ -195,12 +195,12 @@ musim
 apa-apa
 berhenti
 masalah
+masuk
 sedikit
 selamat
-masuk
+cara
 panas
 boston
-cara
 tanpa
 ayah
 bisakah
@@ -235,10 +235,10 @@ dulu
 jadi
 sami
 seekor
+kan
 lupa
 para
 cinta
-kan
 percaya
 tiba
 semuanya
@@ -249,13 +249,13 @@ berenang
 merokok
 yakin
 butuh
+meja
 terima
 tinggi
 guru
 kalimat
 kereta
 kopi
-meja
 meninggal
 pasti
 sepertinya
@@ -274,10 +274,10 @@ rasa
 wanita
 pria
 turun
+mengerti
 padaku
 tadi
 australia
-mengerti
 sulit
 ikan
 menyukai
@@ -289,20 +289,22 @@ mata
 mudah
 bawah
 berbahasa
+sepuluh
 surat
 tepat
 toko
 film
 jatuh
 lahir
-menit
-menonton
-sepuluh
 lima
 menangis
+menit
+menonton
 berjalan
 mencari
 ruangan
+secara
+sejak
 selesai
 terlambat
 terus
@@ -312,8 +314,6 @@ keras
 memakai
 menikah
 orang-orang
-secara
-sejak
 ulang
 apapun
 indah
@@ -330,6 +330,8 @@ segera
 tuhan
 buruk
 pertama
+sibuk
+apel
 bangun
 gunung
 manusia
@@ -337,13 +339,11 @@ meminta
 naik
 pohon
 stasiun
-apel
 bagi
 mendapatkan
 sebentar
 akhirnya
 enam
-sibuk
 tetap
 berpikir
 biasanya
@@ -357,18 +357,18 @@ padamu
 sendirian
 terakhir
 putih
+jerman
 kehilangan
 membutuhkan
 awal
+berangkat
 bicara
 bolehkah
 cantik
 dengannya
-jerman
 lantai
 menarik
 polisi
-berangkat
 berwarna
 john
 kaki
@@ -383,10 +383,10 @@ mendapat
 mendengarkan
 menyelesaikan
 nggak
+sebenarnya
 ayo
 menerima
 milik
-sebenarnya
 telepon
 berlari
 sekitar
@@ -394,27 +394,27 @@ ayahnya
 berikan
 dirinya
 kesalahan
+padanya
 susu
 ziri
 bahagia
 bertanya
 buah
 daging
+ingat
 lapar
-padanya
+sepanjang
 setuju
 silakan
 siswa
+bahkan
 esperanto
 ibuku
-ingat
 lelah
-sepanjang
+masa
 warna
-bahkan
 delapan
 gak
-masa
 semakin
 berbeda
 burung
@@ -447,6 +447,7 @@ kantor
 langit
 meninggalkan
 pesta
+setengah
 temanku
 aneh
 belas
@@ -456,7 +457,6 @@ kuat
 membawa
 membuatku
 mengetahui
-setengah
 teh
 tertawa
 bagian
@@ -467,29 +467,29 @@ buka
 bukanlah
 empat
 hotel
+ibunya
 kecelakaan
+kosong
 mengunjungi
 rasanya
 terbaik
 berusaha
+biasa
 gigi
-ibunya
 kanada
-kosong
 minta
+namanya
 suatu
 terkenal
 akhir
 asing
 baca
-biasa
 ikut
 kerja
 lagu
 memasak
 menjawab
 murah
-namanya
 paris
 roti
 siap
@@ -512,6 +512,7 @@ dilakukan
 gelap
 hewan
 menang
+menghabiskan
 pintunya
 rumahnya
 saling
@@ -525,7 +526,6 @@ digunakan
 kenal
 membunuh
 memilih
-menghabiskan
 menurutmu
 meskipun
 pulau
@@ -581,6 +581,7 @@ sih
 tas
 tatoeba
 telur
+baju
 bill
 cuaca
 dimulai
@@ -590,6 +591,7 @@ kira
 komputer
 memberitahu
 membuka
+mencuci
 mengenakan
 nomor
 pacar
@@ -599,7 +601,6 @@ terbesar
 terbuka
 terdapat
 tuanya
-baju
 berharap
 bersalah
 bosan
@@ -608,11 +609,12 @@ hutan
 matematika
 memahami
 membosankan
-mencuci
 mengajar
 mirip
+peduli
 pelajaran
 ujian
+waktunya
 alasan
 danau
 dimana
@@ -622,10 +624,8 @@ kabar
 kemudian
 mampu
 mencintai
-peduli
 pintar
 televisi
-waktunya
 berbahaya
 dengar
 dimakan
@@ -665,6 +665,7 @@ gambar
 inginkan
 italia
 jendela
+lepas
 london
 malu
 manis
@@ -676,31 +677,30 @@ ruang
 terbiasa
 tiba-tiba
 usia
+adik
 badan
 berusia
 bukankah
+gedung
 habis
 ibumu
 jawab
 jus
 ken
 kotor
-lepas
 melalui
+mengikuti
 pakaian
 pemain
 perang
 sehat
 sejarah
 universitas
-adik
 anaknya
 bandara
 berita
 bersih
-bir
 dengarkan
-gedung
 kesehatan
 kue
 mandi
@@ -713,6 +713,7 @@ oktober
 pekan
 perancis
 permisi
+perpustakaan
 rusak
 seberapa
 sepak
@@ -722,18 +723,18 @@ tanah
 udara
 untukmu
 bangga
+bir
 buku-buku
 gula
 halaman
+kamarnya
 kebun
 kehabisan
 kepadamu
 kuning
 lulus
-mengikuti
 mengira
 pendek
-perpustakaan
 pikirkan
 sedih
 seluruh
@@ -757,7 +758,6 @@ gue
 hadiah
 hangat
 jujur
-kamarnya
 kamus
 keadaan
 kelihatannya
@@ -775,6 +775,7 @@ semoga
 serikat
 situ
 tangannya
+tulis
 video
 bank
 basah
@@ -796,6 +797,7 @@ matanya
 membuatnya
 mengemudi
 muncul
+murid
 penjara
 per
 planet
@@ -808,7 +810,6 @@ sesuai
 tertidur
 tim
 tiongkok
-tulis
 walaupun
 airnya
 akhir-akhir
@@ -838,7 +839,6 @@ membantumu
 membersihkan
 memikirkan
 milikku
-murid
 new
 penasaran
 peraturan
@@ -977,6 +977,7 @@ kata-kata
 kebakaran
 keretanya
 ketinggalan
+ku
 lampu
 lancar
 masalahnya
@@ -1001,6 +1002,7 @@ tentu
 tikus
 anakku
 astronomi
+bagiku
 balik
 bawa
 berhati-hati
@@ -1023,7 +1025,6 @@ kemampuan
 kemari
 keputusan
 kolam
-ku
 laba-laba
 lumayan
 lupakan
@@ -1054,7 +1055,6 @@ topi
 utara
 anjingnya
 apartemen
-bagiku
 bantu
 berikutnya
 berniat
@@ -1179,6 +1179,7 @@ berbuat
 bergerak
 berharga
 berisik
+berlalu
 bernama
 betapa
 bis
@@ -1244,6 +1245,7 @@ terdekat
 terkena
 tertinggi
 tertutup
+tunjukkan
 afrika
 aman
 angka
@@ -1253,7 +1255,6 @@ bahan
 bebas
 berani
 berlaku
-berlalu
 berpuasa
 bersenang-senang
 bertanggung
@@ -1325,7 +1326,6 @@ truk
 tuan
 tugas
 tukang
-tunjukkan
 wajah
 acara
 agama
@@ -1365,6 +1365,7 @@ keuntungan
 kopinya
 lalu-lintas
 lu
+luang
 maafkan
 macam
 manapun
@@ -1423,6 +1424,7 @@ ular
 umumnya
 wawancara
 adakah
+andai
 april
 bapak
 barang-barang
@@ -1468,7 +1470,6 @@ kimia
 kira-kira
 latin
 lebah
-luang
 malaikat
 mei
 melompat
@@ -1648,6 +1649,7 @@ setinggi
 singapura
 tanaman
 tanganku
+telanjang
 tembok
 tersedia
 tetangga
@@ -1662,7 +1664,6 @@ agustus
 akar
 akun
 alice
-andai
 aula
 baginya
 baiklah
@@ -1686,6 +1687,7 @@ bertambah
 biola
 budaya
 cerdas
+ceritanya
 dalamnya
 deras
 dibunuh
@@ -1765,6 +1767,7 @@ polandia
 pucat
 puncak
 radionya
+rendah
 ribuan
 rokok
 sabun
@@ -1778,7 +1781,6 @@ sim
 singkat
 situasinya
 skura
-telanjang
 telinga
 tembikar
 tempe
@@ -1818,7 +1820,6 @@ biar
 bilangan
 bisnis
 bukuku
-ceritanya
 chicago
 cincin
 columbus
@@ -1875,6 +1876,7 @@ lezat
 lingkungan
 madu
 makhluk
+maksudmu
 malah
 masak
 meledak
@@ -1908,6 +1910,7 @@ menyesal
 menyimpan
 menyuruh
 merayakan
+merindukan
 mi
 modern
 musuh
@@ -1939,7 +1942,6 @@ profesional
 ramah
 rapatnya
 remaja
-rendah
 sahabat
 sarankan
 secangkir
@@ -1948,6 +1950,7 @@ sekalipun
 selera
 serbia
 serbuk
+simpan
 sinar
 situs
 smith
@@ -2079,7 +2082,6 @@ liter
 lokasi
 lukanya
 makasih
-maksudmu
 masukkan
 melawan
 melintasi
@@ -2124,10 +2126,8 @@ menyapa
 menyatakan
 menyelesaikannya
 menyetir
-merindukan
 metode
 mil
-mu
 muhammad
 mukamu
 mustahil
@@ -2179,7 +2179,6 @@ sepotong
 setahun
 setidaknya
 seumur
-simpan
 sopir
 sweter
 talinya
@@ -2204,6 +2203,7 @@ usaha
 wortel
 yah
 yuk
+zaman
 absen
 adiknya
 alat
@@ -2302,6 +2302,7 @@ kedatangan
 kedengarannya
 kejahatan
 kelima
+kematiannya
 kembalikan
 kesalahanku
 kesehatanmu
@@ -2447,11 +2448,12 @@ tom-lah
 tuli
 tumbuhan
 tunggulah
+uangku
+ujung
 umurku
 untungnya
 volume
 yaitu
-zaman
 ac
 adat
 aduh
@@ -2542,7 +2544,6 @@ dipaksa
 dipegang
 direktur
 direncanakan
-disana
 diselamatkan
 ditambahkan
 diterbitkan
@@ -2596,7 +2597,6 @@ kegelapan
 keinginan
 kelelawar
 kemanapun
-kematiannya
 kemauan
 kembang
 kemiskinan
@@ -2670,6 +2670,7 @@ menggali
 menggonggong
 menggosok
 menghapus
+mengharapkan
 menghias
 menghormatinya
 menghubunginya
@@ -2690,6 +2691,7 @@ merpati
 miliki
 minumnya
 misterius
+mu
 mulutnya
 mundur
 naga
@@ -2759,6 +2761,7 @@ ribut
 ricardo
 rubah
 rumania
+runtuh
 sampaikan
 sapu
 sastra
@@ -2818,9 +2821,7 @@ topeng
 transportasi
 tubuhnya
 tunai
-uangku
 udang
-ujung
 upacara
 vtuber
 waktumu
@@ -2942,6 +2943,7 @@ dipanggil
 dipasang
 dipenuhi
 dirawat
+disana
 disebabkan
 disiksa
 diskriminasi
@@ -2996,7 +2998,6 @@ ingatlah
 internetku
 isyarat
 jadinya
-jaman
 james
 jamku
 jarak
@@ -3030,6 +3031,7 @@ kedutaan
 kehidupanku
 keiko
 kekayaan
+kelasku
 kelasmu
 keluargamu
 keluarnya
@@ -3062,6 +3064,7 @@ konferensi
 konsep
 konsernya
 korek
+kosakata
 kotak-kotak
 kritik
 kritis
@@ -3164,7 +3167,6 @@ mengerikan
 mengerjakannya
 menggantikan
 menggaruk
-mengharapkan
 menghentikanku
 menghilangkan
 mengikutiku
@@ -3294,7 +3296,6 @@ reputasi
 robert
 roda
 roma
-runtuh
 sabuk
 sakelar
 saksi
@@ -3333,6 +3334,7 @@ sumpit
 sumur
 sungguh-sungguh
 sunyi
+supnya
 suratmu
 surel
 susunya
@@ -3423,6 +3425,7 @@ anna
 antariksa
 antisosial
 apartemennya
+apel-apel
 arus
 asalkan
 asin
@@ -3535,12 +3538,14 @@ daftarnya
 dalang
 dampak
 daratan
+daring
 darurat
 datangnya
 dayung
 demam
 demensia
 dennis
+diambil
 diamlah
 diatur
 dibalas
@@ -3652,6 +3657,7 @@ isinya
 istanbul
 jagalah
 jagung
+jaman
 janggut
 jangka
 jarinya
@@ -3717,7 +3723,6 @@ kejujurannya
 kejutan
 kekalahannya
 kelahirannya
-kelasku
 kelebihan
 keluhanmu
 kemaren
@@ -3753,7 +3758,6 @@ kontes
 kontrak
 kooperatif
 koreksi
-kosakata
 kostum
 kotoran
 kreatif
@@ -3977,7 +3981,6 @@ nick
 novelis
 nunggu
 nutella
-nya
 nyanyian
 nyaring
 nyata
@@ -4186,7 +4189,6 @@ statistik
 stres
 sue
 sukarelawan
-supnya
 susahnya
 sushi
 suzuki
@@ -4333,7 +4335,6 @@ antik
 anting-anting
 aoi
 apanya
-apel-apel
 apple
 aprikot
 argentina
@@ -4513,6 +4514,7 @@ bicaramu
 bidan
 biduk
 bimbang
+birmu
 birunya
 bokap
 boling
@@ -4584,7 +4586,6 @@ dana
 daniel
 dapurnya
 darat
-daring
 darth
 darwin
 dasarnya
@@ -4603,7 +4604,6 @@ dewi
 dexter
 diajari
 diamati
-diambil
 diambilnya
 diana
 dianggap
@@ -5445,6 +5445,7 @@ monitor
 montenegro
 motornya
 mujarab
+mukaku
 mulailah
 mulus
 mungkinkah
@@ -5483,6 +5484,7 @@ nimrod
 nobel
 nugini
 nunukan
+nya
 nyala
 nyaris
 of
@@ -5823,7 +5825,6 @@ skor
 skrining
 skype
 slavia
-sop
 sophia
 sosok
 spesialis
@@ -5940,6 +5941,7 @@ tobias
 toko-toko
 toleran
 tong
+topimu
 toshi
 toshio
 tosilog
@@ -6639,7 +6641,6 @@ biografinya
 biologis
 bioskopnya
 bipolar
-birmu
 biru-hijau
 bisakan
 bisiknya
@@ -6793,7 +6794,7 @@ ciptakan
 cita-citamu
 citra
 city
-ciu
+ciumu
 claude
 cleveland
 clinton
@@ -7202,7 +7203,6 @@ diturunkan
 ditusuk
 diubah
 diujikan
-diujung
 diulangi
 diulek
 divaksin
@@ -7894,6 +7894,7 @@ karangannya
 karaoke
 kardiolog
 kardiologi
+kardus-kardus
 kare
 karenanya
 karetnya
@@ -7980,6 +7981,7 @@ kecemasan
 kecenderungan
 keceplosan
 keceriaan
+kecil-kecil
 kecintaan
 kecoa
 kecoak-kecoaknya
@@ -8238,7 +8240,7 @@ kompensasinya
 kompetisinya
 kompetitor
 komplit
-komprensif
+komprehensif
 kompromi
 komputermu
 komunisme
@@ -9451,7 +9453,6 @@ muat
 muda-mudi
 mudahnya
 muharam
-mukaku
 mulainya
 mulsa
 multilingualisme
@@ -9998,7 +9999,6 @@ perduli
 perempat
 perempuan-perempuan
 perempuanmu
-perencanaan
 `;
 export {
   id_default as default

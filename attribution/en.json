@@ -10,6 +10,8 @@
     "kept": 10000,
     "ngramContexts": 6885,
     "ngramPairs": 20130,
-    "ngramBytes": 121872,
+    "trigramContexts": 6170,
+    "trigramPairs": 8475,
+    "ngramBytes": 205152,
     "generated": "2026-09-19"
 }

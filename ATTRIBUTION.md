@@ -13,18 +13,18 @@ Bundled lists in `languages/` (word-list modules and `<code>.ngram.bin`
 bigram context models) and reference copies in the host project
 (`languages/<code>/autocomplete.txt`, `languages/<code>/ngrams.bin`).
 
-| Language | Source file | License | Sentences | Words kept | Bigram contexts | Bigram pairs | Generated |
-|---|---|---|---|---|---|---|---|
-| en | `eng_sentences_CC0.tsv.bz2` | CC0 1.0 | 41,503 | 10,000 | 6,885 | 20,130 | 2026-09-19 |
-| fr | `fra_sentences.tsv.bz2` | CC-BY 2.0 FR | 726,280 | 10,000 | — | — | 2026-09-17 |
-| es | `spa_sentences.tsv.bz2` | CC-BY 2.0 FR | 442,006 | 10,000 | — | — | 2026-09-17 |
-| de | `deu_sentences.tsv.bz2` | CC-BY 2.0 FR | 780,494 | 10,000 | — | — | 2026-09-17 |
-| pt | `por_sentences.tsv.bz2` | CC-BY 2.0 FR | 444,455 | 10,000 | — | — | 2026-09-17 |
-| id | `ind_sentences.tsv.bz2` | CC-BY 2.0 FR | 28,275 | 10,000 | — | — | 2026-09-17 |
-| ru | `rus_sentences_CC0.tsv.bz2` | CC0 1.0 | 23,035 | 10,000 | — | — | 2026-09-17 |
-| ar | `ara_sentences.tsv.bz2` | CC-BY 2.0 FR | 68,541 | 10,000 | — | — | 2026-09-17 |
-| hi | `hin_sentences.tsv.bz2` | CC-BY 2.0 FR | 16,475 | 8,036 | — | — | 2026-09-17 |
-| bn | `ben_sentences.tsv.bz2` | CC-BY 2.0 FR | 15,813 | 10,000 | — | — | 2026-09-18 |
+| Language | Source file | License | Sentences | Words kept | Bigram contexts | Bigram pairs | Trigram contexts | Trigram pairs | Generated |
+|---|---|---|---|---|---|---|---|---|---|
+| en | `eng_sentences_CC0.tsv.bz2` | CC0 1.0 | 41,503 | 10,000 | 6,885 | 20,130 | 6,170 | 8,475 | 2026-09-19 |
+| fr | `fra_sentences.tsv.bz2` | CC-BY 2.0 FR | 726,753 | 10,000 | 9,820 | 59,373 | 37,358 | 82,334 | 2026-09-19 |
+| es | `spa_sentences.tsv.bz2` | CC-BY 2.0 FR | 442,135 | 10,000 | 9,690 | 49,255 | 29,347 | 56,077 | 2026-09-19 |
+| de | `deu_sentences.tsv.bz2` | CC-BY 2.0 FR | 781,130 | 10,000 | 9,890 | 61,209 | 39,127 | 92,841 | 2026-09-19 |
+| pt | `por_sentences.tsv.bz2` | CC-BY 2.0 FR | 444,636 | 10,000 | 9,576 | 48,409 | 27,956 | 52,946 | 2026-09-19 |
+| id | `ind_sentences.tsv.bz2` | CC-BY 2.0 FR | 28,311 | 10,000 | 2,464 | 6,576 | 1,686 | 2,450 | 2026-09-19 |
+| ru | `rus_sentences_CC0.tsv.bz2` | CC0 1.0 | 23,036 | 10,000 | 4,400 | 9,008 | 2,039 | 2,462 | 2026-09-19 |
+| ar | `ara_sentences.tsv.bz2` | CC-BY 2.0 FR | 68,543 | 10,000 | 4,909 | 11,600 | 2,060 | 2,664 | 2026-09-19 |
+| hi | `hin_sentences.tsv.bz2` | CC-BY 2.0 FR | 16,475 | 8,035 | 2,365 | 5,994 | 1,667 | 2,133 | 2026-09-19 |
+| bn | `ben_sentences.tsv.bz2` | CC-BY 2.0 FR | 15,813 | 10,000 | 2,856 | 6,200 | 573 | 684 | 2026-09-19 |
 
 ## Composition data
 
@@ -65,12 +65,17 @@ frequency counting, profanity filtering (`tools/profanity-filter.txt`,
 project-owned and user-editable), frequency-descending sort with alphabetical
 tie-break, top 10000 retained.
 
-Context models: bigram counts accumulated over the same sentence dumps between
-consecutive retained vocabulary words within a sentence; successors occurring
-fewer than 2 times are dropped and at most
+Context models: bigram counts are accumulated over the same sentence dumps
+between consecutive retained vocabulary words within a sentence; successors
+occurring fewer than 2 times are dropped and at most
 8 successors are kept per context, ranked by count with an
-alphabetical tie-break. Models reference positions in the bundled word list and
-are validated against it by hash at load time.
+alphabetical tie-break. Trigram counts are accumulated for word pairs occurring
+at least 3 times, capped at the
+50000 most frequent pairs per language, with
+successors occurring fewer than 3 times dropped and at
+most 4 successors kept per pair. Both tables
+live in `languages/<code>.ngram.bin` as separate sections and reference positions in
+the bundled word list, validated against it by hash at load time.
 
 Composition data: CJK word segmentation via `Intl.Segmenter`; for Japanese,
 kana readings are taken from the furigana annotations in the transcriptions

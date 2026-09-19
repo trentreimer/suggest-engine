@@ -5,7 +5,13 @@
     "sourceFile": "ara_sentences.tsv.bz2",
     "sourceUrl": "https://downloads.tatoeba.org/exports/per_language/ara/ara_sentences.tsv.bz2",
     "license": "CC-BY 2.0 FR",
-    "sentences": 68541,
+    "sentences": 68543,
+    "tokens": 46284,
     "kept": 10000,
-    "generated": "2026-09-17"
+    "ngramContexts": 4909,
+    "ngramPairs": 11600,
+    "trigramContexts": 2060,
+    "trigramPairs": 2664,
+    "ngramBytes": 103052,
+    "generated": "2026-09-19"
 }
