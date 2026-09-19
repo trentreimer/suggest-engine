@@ -301,15 +301,3 @@ The bundle and bundled data are committed, so version tags are directly
 consumable through jsDelivr
 (`cdn.jsdelivr.net/gh/trentreimer/suggest-engine@<tag>/dist/...`) with no npm
 step. Bump the tag when `src/`, `languages/` or the bundle format changes.
-
-To test an unreleased commit, pin its SHA instead of a tag:
-
-```
-https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@<commit-sha>/dist/suggest-engine.esm.js
-```
-
-SHA URLs are immutable and appear within minutes of a push, so a new build means
-a new SHA; `loadBundledNgrams()` resolves its data under the same SHA. Branch
-URLs such as `@main` also work but are cached for up to 12 hours, and files can
-update independently during that window, so they are not reliable for testing a
-specific build.
