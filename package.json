@@ -1,13 +1,11 @@
 {
     "name": "suggest-engine",
     "version": "0.3.0",
-    "description": "Editor-agnostic autocomplete suggestion engine with optional user word learning.",
+    "description": "Editor-agnostic autocomplete suggestion engine with optional user word learning and bigram context ranking.",
     "license": "MIT",
     "type": "module",
     "main": "src/index.js",
     "module": "dist/suggest-engine.esm.js",
-    "unpkg": "dist/suggest-engine.js",
-    "jsdelivr": "dist/suggest-engine.js",
     "files": [
         "src",
         "languages",
@@ -15,7 +13,7 @@
         "ATTRIBUTION.md"
     ],
     "scripts": {
-        "build": "rm -rf dist && esbuild src/index.js --bundle --splitting --format=esm --outdir=dist --entry-names=suggest-engine.esm --chunk-names=chunks/[name]-[hash] && esbuild src/global.js --bundle --format=iife --outfile=dist/suggest-engine.js && mkdir -p dist/languages && find languages -maxdepth 1 -name '*.ngram.bin' -exec cp {} dist/languages/ \\;",
+        "build": "rm -rf dist && esbuild src/index.js --bundle --splitting --format=esm --outdir=dist --entry-names=suggest-engine.esm --chunk-names=chunks/[name]-[hash] && mkdir -p dist/languages && find languages -maxdepth 1 -name '*.ngram.bin' -exec cp {} dist/languages/ \\;",
         "test": "node --test",
         "bench": "node tools/bench-suggest.mjs"
     },

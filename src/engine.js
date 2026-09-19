@@ -49,7 +49,7 @@ function defaultNgramBase() {
             return new URL('../languages/', import.meta.url).href;
         }
     } catch (err) {
-        // import.meta is unavailable in classic-script builds; callers pass a base URL instead.
+        // import.meta is unavailable in some environments; callers pass a base URL there.
     }
 
     return null;

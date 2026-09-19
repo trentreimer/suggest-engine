@@ -12,8 +12,6 @@ Zero runtime dependencies. Plain ES modules.
 
 Suggestions work out of the box with the bundled English word list.
 
-**ES modules**
-
 ```js
 import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.3.0/dist/suggest-engine.esm.js';
 
@@ -29,25 +27,47 @@ engine.suggest('wo', 'in the ');
 // → [{ text: 'world', ... }, ...] — the previous word promotes likely continuations
 ```
 
-**Classic `<script>` tag**
+Inline in a page, the same entry point works from a module script:
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.3.0/dist/suggest-engine.js"></script>
-<script>
-    (async () => {
-        const engine = new SuggestEngine();
+<script type="module">
+    import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.3.0/dist/suggest-engine.esm.js';
 
-        await engine.loadBundledWordList();
+    const engine = new SuggestEngine();
 
-        console.log(engine.suggest('hel'));
-    })();
+    await engine.loadBundledWordList();
+    await engine.loadBundledNgrams();
+
+    console.log(engine.suggest('hel'));
 </script>
 ```
 
 `text` is the completed word and `insertSuffix` is what to insert after the
-typed prefix. The IIFE build puts the class on `window.SuggestEngine`, with
-`UserWords`, `NgramModel`, `parseWordList` and `resolveWordList` attached as
-properties. From a local clone, import `./src/index.js` instead.
+typed prefix. From a local clone, import `./src/index.js` instead. Node and Bun
+cannot import remote modules — see [Server-side](#server-side).
+
+### Server-side
+
+Browsers (`<script type="module">`) and Deno can import the CDN URL directly;
+Node and Bun cannot import `https:` modules, so install the package from its Git
+repository or vendor `dist/` together with `languages/`:
+
+```sh
+npm install github:trentreimer/suggest-engine
+```
+
+`loadBundledWordList()` resolves bundled language data relative to the bundle,
+so it works from an installed or vendored copy. `loadBundledNgrams()` uses
+`fetch`, and its default base URL is a `file:` path under Node, which Node's
+`fetch` rejects: pass an `http(s)` base URL, or hand the bytes to
+`addNgramModel()`:
+
+```js
+import { readFileSync } from 'node:fs';
+
+await engine.loadBundledWordList();
+await engine.addNgramModel(readFileSync('node_modules/suggest-engine/languages/en.ngram.bin'));
+```
 
 ## Full example
 
@@ -140,7 +160,7 @@ Defaults for unspecified properties: `storagePrefix: 'suggest-engine'`,
 | `setLanguage(lang)` | Switch active language for sources and the user-words bucket |
 | `addWordList(name, source)` | Register a word list for the current language (`url` string, `string[]`, or `{ text }`); same name replaces |
 | `addNgramModel(source)` | Register a bigram model for the current language (`url` string, `ArrayBuffer`, or `NgramModel`); same language replaces |
-| `loadBundledNgrams(baseUrl?)` | Fetch the bundled `<language>.ngram.bin` (resolves `false` when none ships); the default base URL works in the ESM build, classic builds must pass one |
+| `loadBundledNgrams(baseUrl?)` | Fetch the bundled `<language>.ngram.bin` (resolves `false` when none ships); the default base URL resolves relative to the module, so pass one where no module URL is available (for example Node) |
 | `wordBefore(text, caret)` | Word ending at the caret (`'`/`-`-aware) |
 | `wordsBefore(text, index, count)` | Up to `count` words ending before `index`, nearest first (used for context) |
 | `suggest(word, context?)` | Ranked suggestions: with `context` (the text before the current word) and a matching ngram model, context matches first (bigram count order), then user words (frequency order), then word lists **in registration order** — word list order is suggestion priority, so ship lists most-common-first; deduped case-insensitively; `text` carries the word's own casing, `insertSuffix` is what to insert after the typed prefix |
@@ -186,8 +206,10 @@ await engine.loadBundledNgrams('https://cdn.example/languages/');   // explicit 
 ```
 
 `loadBundledNgrams()` resolves the default base relative to the ESM bundle
-(`dist/languages/`), which works for both a local clone and jsDelivr. The classic
-script build has no module URL to resolve, so pass a base URL there. Models are
+(`dist/languages/`), which works for both a local clone and jsDelivr. Under Node
+that default is a `file:` URL, which Node's `fetch` rejects — pass an `http(s)`
+base URL there, or use `addNgramModel()` with the file contents (see
+[Server-side](#server-side)). Models are
 compact typed arrays decoded without parsing (about 120KB for English: ~6,900
 contexts, ~20,000 pairs), reference positions in the bundled word list, and are
 validated against it by hash at load time. Loading is optional and asynchronous;
@@ -266,15 +288,23 @@ npm run bench   # tools/bench-suggest.mjs — ns/call for context and no-context
 npm run build   # esbuild → dist/
 ```
 
-`npm run build` writes two bundles:
+`npm run build` writes `dist/suggest-engine.esm.js` — the ESM entry; bundled
+language data loads lazily from `dist/chunks/` on demand, and bundled context
+models are copied to `dist/languages/` for `loadBundledNgrams()`.
 
-- `dist/suggest-engine.esm.js` — ESM entry; bundled language data loads lazily
-  from `dist/chunks/` on demand, and bundled context models are copied to
-  `dist/languages/` for `loadBundledNgrams()`.
-- `dist/suggest-engine.js` — self-contained IIFE exposing the class as
-  `window.SuggestEngine`, with `UserWords`, `NgramModel`, `parseWordList` and
-  `resolveWordList` attached, for plain `<script>` tags.
-
-Both are committed, so version tags are directly consumable through jsDelivr
+The bundle and bundled data are committed, so version tags are directly
+consumable through jsDelivr
 (`cdn.jsdelivr.net/gh/trentreimer/suggest-engine@<tag>/dist/...`) with no npm
 step. Bump the tag when `src/`, `languages/` or the bundle format changes.
+
+To test an unreleased commit, pin its SHA instead of a tag:
+
+```
+https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@<commit-sha>/dist/suggest-engine.esm.js
+```
+
+SHA URLs are immutable and appear within minutes of a push, so a new build means
+a new SHA; `loadBundledNgrams()` resolves its data under the same SHA. Branch
+URLs such as `@main` also work but are cached for up to 12 hours, and files can
+update independently during that window, so they are not reliable for testing a
+specific build.
