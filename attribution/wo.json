@@ -1,0 +1,23 @@
+{
+    "code": "wo",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "HPLT",
+            "file": "wol_Latn (9_1.jsonl.zst, 8_1.jsonl.zst, 7_1.jsonl.zst, 6_1.jsonl.zst, 5_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 136129,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 136129,
+    "tokens": 117500,
+    "kept": 10000,
+    "ngramContexts": 9925,
+    "ngramPairs": 61344,
+    "trigramContexts": 41106,
+    "trigramPairs": 87830,
+    "ngramBytes": 985156,
+    "generated": "2026-09-20"
+}

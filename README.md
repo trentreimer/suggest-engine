@@ -13,7 +13,7 @@ Zero runtime dependencies. Plain ES modules.
 Suggestions work out of the box with the bundled English word list.
 
 ```js
-import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.3.0/dist/suggest-engine.esm.js';
+import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.4.0/dist/suggest-engine.esm.js';
 
 const engine = new SuggestEngine();
 
@@ -31,7 +31,7 @@ Inline in a page, the same entry point works from a module script:
 
 ```html
 <script type="module">
-    import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.3.0/dist/suggest-engine.esm.js';
+    import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.4.0/dist/suggest-engine.esm.js';
 
     const engine = new SuggestEngine();
 
@@ -72,7 +72,7 @@ await engine.addNgramModel(readFileSync('node_modules/suggest-engine/languages/e
 ## Full example
 
 ```js
-import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.3.0/dist/suggest-engine.esm.js';
+import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.4.0/dist/suggest-engine.esm.js';
 
 const engine = new SuggestEngine({
     language: 'en',
@@ -179,9 +179,17 @@ Defaults for unspecified properties: `storagePrefix: 'suggest-engine'`,
 
 ### Bundled word lists
 
-The library ships frequency-ordered word lists for `en`, `fr`, `es`, `de`, `pt`,
-`id`, `ru`, `ar`, `hi`, and `bn` in `languages/` (one JS module per language, plus a
-manifest).
+The library ships frequency-ordered word lists for 43 languages in
+`languages/` (one JS module per language, plus a manifest): `en`, `fr`, `es`,
+`de`, `pt`, `id`, `ru`, `ar`, `hi`, `bn`, `sw`, `pcm`, `it`, `tr`, `vi`, `fa`,
+`mr`, `ha`, `tl`, `uk`, `pl`, `nl`, `ko`, `he`, `el`, `ur`, `ta`, `te`, `am`,
+`yo`, `zu`, `gu`, `pa`, `ml`, `kn`, `om`, `ig`, `xh`, `so`, `sn`, `rw`, `ny`,
+and `wo`. `pcm` combines a manually cached Common Voice archive (CC0) with two
+automatically fetched CC-BY 4.0 corpora; rebuilding it needs the archive
+described in [Regenerating the data](#regenerating-the-data). The `ur`, `ta`,
+`te`, `am`, `yo`, `zu`, `gu`, `pa`, `ml`, `kn`, `om`, `ig`, `xh`, `so`, `sn`,
+`rw`, `ny`, and `wo` lists are sampled from the CC0 HPLT v3.0 web corpora, also
+described there.
 Load the list for the active language with:
 
 ```js
@@ -198,9 +206,9 @@ regenerating from raw word-list text is a copy-paste into a template literal.
 ### Bundled context models
 
 Context models ship alongside the word lists as `languages/<code>.ngram.bin`
-for all ten word-list languages — a bigram section plus a trigram section where
-the corpus supports one — and are copied to `dist/languages/` so the CDN build
-can fetch them next to the bundle:
+for every bundled word-list language — a bigram section plus a trigram section
+where the corpus supports one — and are copied to `dist/languages/` so the CDN
+build can fetch them next to the bundle:
 
 ```js
 await engine.loadBundledNgrams();         // current language; false if none bundled
@@ -214,8 +222,8 @@ base URL there, or use `addNgramModel()` with the file contents (see
 [Server-side](#server-side)). Models are
 compact typed arrays decoded without parsing, reference positions in the bundled
 word list, and are validated against it by hash at load time. Sizes range from
-about 50KB (bn) to about 990KB (de, which is also the most expensive single
-fetch); an app only loads the language it is using. Loading is optional and
+about 50KB (bn) to about 1.5MB (ur, whose HPLT web sample is the deepest); an
+app only loads the language it is using. Loading is optional and
 asynchronous; suggestions keep working without it, and context ranking simply
 switches on once the model and the bundled list for that language are both
 present.
@@ -242,9 +250,40 @@ configuration in `tools/wordlist-sources.json` (for example `topN`,
 `cc0MinSentences`, `ngramTopK`, `ngramMinCount`, `trigramTopK`,
 `trigramMinPairCount`, `trigramMinCount`, or `trigramMaxContexts`).
 
+A language may combine several sources: `sw` concatenates Tatoeba's `swh` and
+`swc` dumps, and `pcm` reads the Common Voice archive described below. Source
+types and per-language overrides (`topN`, ngram thresholds) live in
+`tools/wordlist-sources.json` alongside the source list.
+
+`hplt` sources fetch the CC0 HPLT v3.0 manifest, stream the highest-quality
+shards first, and stop at `maxDocuments` (default 25,000) or `maxSegments`
+(default 150,000), whichever comes first; the normalized sample is cached under
+`tools/.cache/hplt_<pack>.txt`, so later builds run offline. The segment budget
+matters because HPLT documents are web pages of varying length.
+
 The host project's reference copies are written to a sibling `click.totype.org`
 checkout by default; set `HOST_DIR=/path/to/host` to target a different host
 project root.
+
+#### Manually cached corpora
+
+Common Voice corpora are distributed through the Mozilla Data Collective, which
+requires a free account, so the build cannot download them. For `pcm`, sign in,
+download **Common Voice Scripted Speech 27.0 - Nigerian Pidgin English**
+(CC0 1.0), and save the archive anywhere under `tools/.cache/` with a name
+matching `*cv-corpus-*-pcm.tar.gz`; browser-added timestamp prefixes are fine.
+The build verifies the pinned sha256, streams `pcm/validated_sentences.tsv` out
+of the archive without extracting it, and reports the download link when no
+match is found: an explicit `node tools/build-wordlists.mjs pcm` fails with
+instructions, while a full rebuild skips `pcm` and keeps the rest of the data.
+With the archive cached, `node tools/build-wordlists.mjs pcm` produces the
+bundled data like any other language.
+
+`pcm` also reads two CC-BY 4.0 corpora automatically: the
+`asr-nigerian-pidgin/nigerian-pidgin-1.0` transcripts through the Hugging Face
+datasets server, and the CENCOS Zip archive from Zenodo. Their citations and
+licenses are recorded in [ATTRIBUTION.md](ATTRIBUTION.md); no manual step is
+needed for them.
 
 Remove a language from the bundled data with
 `node tools/build-wordlists.mjs --remove <code>`: this deletes its bundled data
@@ -254,9 +293,13 @@ the registry entry in `js/languages.js`, the language's section in
 `tools/profanity-filter.txt`, and its entry in `tools/wordlist-sources.json`).
 
 Configuration lives in `tools/wordlist-sources.json`; `pinyin-pro` (MIT) is a
-build-time devDependency used for the Mandarin readings. Corpus provenance,
-licensing and generation details are documented in
-[ATTRIBUTION.md](ATTRIBUTION.md).
+build-time devDependency used for the Mandarin readings. Only CC0, CC-BY, and
+other attribution-only sources are used for bundled data — no share-alike,
+non-commercial, or no-derivatives corpora — so the package stays usable in
+commercial projects. Profanity filter seeds for some languages are derived from
+the Shutterstock LDNOOBW list (CC-BY 4.0) and its CC0 V2 follow-up, trimmed to
+entries that occur in the bundled word lists. Corpus provenance, licensing and
+generation details are documented in [ATTRIBUTION.md](ATTRIBUTION.md).
 
 ### Storage
 

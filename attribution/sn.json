@@ -1,0 +1,23 @@
+{
+    "code": "sn",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "HPLT",
+            "file": "sna_Latn",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 136240,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 136240,
+    "tokens": 320109,
+    "kept": 10000,
+    "ngramContexts": 9983,
+    "ngramPairs": 69243,
+    "trigramContexts": 21171,
+    "trigramPairs": 36721,
+    "ngramBytes": 653184,
+    "generated": "2026-09-20"
+}

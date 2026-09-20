@@ -1,0 +1,23 @@
+{
+    "code": "zu",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "HPLT",
+            "file": "zul_Latn (10_1.jsonl.zst, 9_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 134197,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 134197,
+    "tokens": 459680,
+    "kept": 10000,
+    "ngramContexts": 9993,
+    "ngramPairs": 72539,
+    "trigramContexts": 21220,
+    "trigramPairs": 34185,
+    "ngramBytes": 656676,
+    "generated": "2026-09-20"
+}

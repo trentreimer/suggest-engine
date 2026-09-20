@@ -1,0 +1,23 @@
+{
+    "code": "so",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "HPLT",
+            "file": "som_Latn",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 140518,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 140518,
+    "tokens": 377064,
+    "kept": 10000,
+    "ngramContexts": 9994,
+    "ngramPairs": 75095,
+    "trigramContexts": 34916,
+    "trigramPairs": 73440,
+    "ngramBytes": 933492,
+    "generated": "2026-09-20"
+}

@@ -1,0 +1,22 @@
+{
+    "code": "nl",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "nld_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/nld/nld_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 201168
+        }
+    ],
+    "sentences": 201168,
+    "tokens": 39277,
+    "kept": 10000,
+    "ngramContexts": 7170,
+    "ngramPairs": 24943,
+    "trigramContexts": 16610,
+    "trigramPairs": 28190,
+    "ngramBytes": 388492,
+    "generated": "2026-09-20"
+}

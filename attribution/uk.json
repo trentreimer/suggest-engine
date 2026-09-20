@@ -1,0 +1,22 @@
+{
+    "code": "uk",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "ukr_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/ukr/ukr_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 188811
+        }
+    ],
+    "sentences": 188811,
+    "tokens": 48368,
+    "kept": 10000,
+    "ngramContexts": 6799,
+    "ngramPairs": 21913,
+    "trigramContexts": 9259,
+    "trigramPairs": 14017,
+    "ngramBytes": 258648,
+    "generated": "2026-09-20"
+}

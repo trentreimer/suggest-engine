@@ -1,0 +1,23 @@
+{
+    "code": "ur",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "HPLT",
+            "file": "urd_Arab",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 130101,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 130101,
+    "tokens": 246284,
+    "kept": 10000,
+    "ngramContexts": 9995,
+    "ngramPairs": 78747,
+    "trigramContexts": 49410,
+    "trigramPairs": 172735,
+    "ngramBytes": 1461240,
+    "generated": "2026-09-20"
+}

@@ -201,6 +201,30 @@ test('bundled word lists load, rank by frequency, and skip missing languages', a
     assert.equal(await engine.loadBundledWordList(), true);
     assert.equal(engine.suggest('ف')[0].text, 'في');
 
+    engine.setLanguage('sw');
+    assert.equal(await engine.loadBundledWordList(), true);
+    assert.equal(engine.suggest('kw')[0].text, 'kwa');
+
+    engine.setLanguage('pcm');
+    assert.equal(await engine.loadBundledWordList(), true);
+    assert.equal(engine.suggest('we')[0].text, 'wey');
+
+    engine.setLanguage('it');
+    assert.equal(await engine.loadBundledWordList(), true);
+    assert.equal(engine.suggest('ch')[0].text, 'che');
+
+    engine.setLanguage('ko');
+    assert.equal(await engine.loadBundledWordList(), true);
+    assert.equal(engine.suggest('그')[0].text, '그는');
+
+    engine.setLanguage('am');
+    assert.equal(await engine.loadBundledWordList(), true);
+    assert.equal(engine.suggest('እ')[0].text, 'እና');
+
+    engine.setLanguage('gu');
+    assert.equal(await engine.loadBundledWordList(), true);
+    assert.equal(engine.suggest('અ')[0].text, 'અને');
+
     assert.equal(await engine.loadBundledWordList('zh'), false);
     assert.equal(await engine.loadBundledWordList('../escape'), false);
 });

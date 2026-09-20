@@ -1,0 +1,22 @@
+{
+    "code": "el",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "ell_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/ell/ell_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 42554
+        }
+    ],
+    "sentences": 42554,
+    "tokens": 20538,
+    "kept": 10000,
+    "ngramContexts": 4202,
+    "ngramPairs": 10062,
+    "trigramContexts": 3270,
+    "trigramPairs": 4681,
+    "ngramBytes": 110404,
+    "generated": "2026-09-20"
+}

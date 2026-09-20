@@ -1,10 +1,15 @@
 {
     "code": "ar",
     "mode": "words",
-    "tatoebaCode": "ara",
-    "sourceFile": "ara_sentences.tsv.bz2",
-    "sourceUrl": "https://downloads.tatoeba.org/exports/per_language/ara/ara_sentences.tsv.bz2",
-    "license": "CC-BY 2.0 FR",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "ara_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/ara/ara_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 68543
+        }
+    ],
     "sentences": 68543,
     "tokens": 46284,
     "kept": 10000,

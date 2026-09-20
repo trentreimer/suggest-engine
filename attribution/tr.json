@@ -1,0 +1,22 @@
+{
+    "code": "tr",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "tur_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/tur/tur_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 749204
+        }
+    ],
+    "sentences": 749204,
+    "tokens": 162387,
+    "kept": 10000,
+    "ngramContexts": 9012,
+    "ngramPairs": 51484,
+    "trigramContexts": 24156,
+    "trigramPairs": 43228,
+    "ngramBytes": 626228,
+    "generated": "2026-09-20"
+}

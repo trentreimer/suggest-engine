@@ -1,0 +1,23 @@
+{
+    "code": "ta",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "HPLT",
+            "file": "tam_Taml (10_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 138949,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 138949,
+    "tokens": 750150,
+    "kept": 10000,
+    "ngramContexts": 9986,
+    "ngramPairs": 71840,
+    "trigramContexts": 12851,
+    "trigramPairs": 19882,
+    "ngramBytes": 529672,
+    "generated": "2026-09-20"
+}

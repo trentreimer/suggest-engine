@@ -1,0 +1,22 @@
+{
+    "code": "pl",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "pol_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/pol/pol_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 137173
+        }
+    ],
+    "sentences": 137173,
+    "tokens": 55917,
+    "kept": 10000,
+    "ngramContexts": 6996,
+    "ngramPairs": 20678,
+    "trigramContexts": 6880,
+    "trigramPairs": 9754,
+    "ngramBytes": 218804,
+    "generated": "2026-09-20"
+}

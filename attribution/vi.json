@@ -1,0 +1,22 @@
+{
+    "code": "vi",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "vie_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/vie/vie_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 33184
+        }
+    ],
+    "sentences": 33184,
+    "tokens": 5020,
+    "kept": 5013,
+    "ngramContexts": 2410,
+    "ngramPairs": 9441,
+    "trigramContexts": 6213,
+    "trigramPairs": 9164,
+    "ngramBytes": 138644,
+    "generated": "2026-09-20"
+}

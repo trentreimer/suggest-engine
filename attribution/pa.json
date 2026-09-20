@@ -1,0 +1,23 @@
+{
+    "code": "pa",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "HPLT",
+            "file": "pan_Guru (10_1.jsonl.zst, 9_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 123313,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 123313,
+    "tokens": 222720,
+    "kept": 10000,
+    "ngramContexts": 9997,
+    "ngramPairs": 78480,
+    "trigramContexts": 46392,
+    "trigramPairs": 138141,
+    "ngramBytes": 1297664,
+    "generated": "2026-09-20"
+}

@@ -1,0 +1,22 @@
+{
+    "code": "ko",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "kor_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/kor/kor_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 15940
+        }
+    ],
+    "sentences": 15940,
+    "tokens": 20163,
+    "kept": 10000,
+    "ngramContexts": 1470,
+    "ngramPairs": 2646,
+    "trigramContexts": 75,
+    "trigramPairs": 76,
+    "ngramBytes": 20368,
+    "generated": "2026-09-20"
+}

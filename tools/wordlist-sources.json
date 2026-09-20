@@ -54,6 +54,368 @@
             "tatoebaCode": "ben",
             "script": "Beng"
         },
+        "sw": {
+            "script": "Latn",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "swh"
+                },
+                {
+                    "type": "tatoeba",
+                    "code": "swc"
+                }
+            ]
+        },
+        "pcm": {
+            "script": "Latn",
+            "topN": 8000,
+            "ngramMinCount": 2,
+            "trigramMinPairCount": 2,
+            "trigramMinCount": 2,
+            "sources": [
+                {
+                    "type": "commonvoice",
+                    "name": "Common Voice",
+                    "dataset": "Common Voice Scripted Speech 27.0 - Nigerian Pidgin English",
+                    "url": "https://mozilladatacollective.com/datasets/cmu5ufsxn007snq07xuxba0uc",
+                    "archiveFile": "pcm/validated_sentences.tsv",
+                    "cacheFile": "*cv-corpus-*-pcm.tar.gz",
+                    "sha256": "68ccabbbef60120684a551fc2fc7f47f62f6195e6fa23ab01e78a2a06943b1af",
+                    "license": "CC0 1.0",
+                    "manual": true
+                },
+                {
+                    "type": "huggingface",
+                    "name": "Nigerian Pidgin ASR",
+                    "dataset": "asr-nigerian-pidgin/nigerian-pidgin-1.0",
+                    "url": "https://huggingface.co/datasets/asr-nigerian-pidgin/nigerian-pidgin-1.0",
+                    "config": "default",
+                    "splits": ["train", "validation", "test"],
+                    "textField": "sentence",
+                    "cacheFile": "asr-nigerian-pidgin__nigerian-pidgin-1.0.txt",
+                    "license": "CC-BY 4.0",
+                    "attribution": "Rufai, A. M., Abeeb, A., Oduntan, E., Arulogun, T., Adegboro, O., & Ajisafe, D. (2025). Towards End-to-End Training of Automatic Speech Recognition for Nigerian Pidgin. arXiv:2010.11123. Dataset: asr-nigerian-pidgin/nigerian-pidgin-1.0, https://huggingface.co/datasets/asr-nigerian-pidgin/nigerian-pidgin-1.0"
+                },
+                {
+                    "type": "zenodo",
+                    "name": "CENCOS",
+                    "record": "7314016",
+                    "file": "CENCOS corpus.zip",
+                    "url": "https://zenodo.org/records/7314016",
+                    "downloadUrl": "https://zenodo.org/records/7314016/files/CENCOS%20corpus.zip?download=1",
+                    "cacheFile": "CENCOS corpus.zip",
+                    "textCacheFile": "cencos.txt",
+                    "md5": "ba26dcbd17d17909439de83808c13bd1",
+                    "license": "CC-BY 4.0",
+                    "attribution": "Agbo, O. F., & Plag, I. (2022). Corpus of English and Nigerian Pidgin Code-switching (CENCOS), https://doi.org/10.5281/zenodo.7314016"
+                }
+            ]
+        },
+        "it": {
+            "tatoebaCode": "ita",
+            "script": "Latn"
+        },
+        "tr": {
+            "tatoebaCode": "tur",
+            "script": "Latn"
+        },
+        "vi": {
+            "tatoebaCode": "vie",
+            "script": "Latn"
+        },
+        "fa": {
+            "tatoebaCode": "pes",
+            "script": "Arab"
+        },
+        "mr": {
+            "tatoebaCode": "mar",
+            "script": "Deva"
+        },
+        "ha": {
+            "tatoebaCode": "hau",
+            "script": "Latn"
+        },
+        "tl": {
+            "tatoebaCode": "tgl",
+            "script": "Latn"
+        },
+        "uk": {
+            "tatoebaCode": "ukr",
+            "script": "Cyrl"
+        },
+        "pl": {
+            "tatoebaCode": "pol",
+            "script": "Latn"
+        },
+        "nl": {
+            "tatoebaCode": "nld",
+            "script": "Latn"
+        },
+        "ko": {
+            "tatoebaCode": "kor",
+            "script": "Hang"
+        },
+        "he": {
+            "tatoebaCode": "heb",
+            "script": "Hebr"
+        },
+        "el": {
+            "tatoebaCode": "ell",
+            "script": "Grek"
+        },
+        "ur": {
+            "script": "Arab",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "urd_Arab",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "ta": {
+            "script": "Taml",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "tam_Taml",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "te": {
+            "script": "Telu",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "tel_Telu",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "am": {
+            "script": "Ethi",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "amh_Ethi",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "yo": {
+            "script": "Latn",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "yor_Latn",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "zu": {
+            "script": "Latn",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "zul_Latn",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "gu": {
+            "script": "Gujr",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "guj_Gujr",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "pa": {
+            "script": "Guru",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "pan_Guru",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "ml": {
+            "script": "Mlym",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "mal_Mlym",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "kn": {
+            "script": "Knda",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "kan_Knda",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "om": {
+            "script": "Latn",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "gaz_Latn",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "ig": {
+            "script": "Latn",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "ibo_Latn",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "xh": {
+            "script": "Latn",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "xho_Latn",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "so": {
+            "script": "Latn",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "som_Latn",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "sn": {
+            "script": "Latn",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "sna_Latn",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "rw": {
+            "script": "Latn",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "kin_Latn",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "ny": {
+            "script": "Latn",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "nya_Latn",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "wo": {
+            "script": "Latn",
+            "sources": [
+                {
+                    "type": "hplt",
+                    "pack": "wol_Latn",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
         "ja": {
             "mode": "composition",
             "tatoebaCode": "jpn",

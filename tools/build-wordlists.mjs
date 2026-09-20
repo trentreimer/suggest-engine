@@ -1,10 +1,12 @@
-import { createWriteStream, existsSync, copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { createReadStream, createWriteStream, existsSync, copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
-import { join, dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { createZstdDecompress } from 'node:zlib';
+import { basename, join, dirname, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { encodeNgramModel, fnv1a } from './ngram-format.mjs';
 import { parseWordList } from '../src/word-lists.js';
 
@@ -24,6 +26,16 @@ const scriptRanges = {
     Arab: '\\p{Script=Arab}',
     Deva: '\\p{Script=Deva}',
     Beng: '\\p{Script=Beng}',
+    Grek: '\\p{Script=Grek}',
+    Hebr: '\\p{Script=Hebr}',
+    Hang: '\\p{Script=Hang}',
+    Taml: '\\p{Script=Taml}',
+    Telu: '\\p{Script=Telu}',
+    Gujr: '\\p{Script=Gujr}',
+    Guru: '\\p{Script=Guru}',
+    Mlym: '\\p{Script=Mlym}',
+    Knda: '\\p{Script=Knda}',
+    Ethi: '\\p{Script=Ethi}',
 };
 
 const jaSegmenter = new Intl.Segmenter('ja', { granularity: 'word' });
@@ -246,8 +258,12 @@ function emitComposition(byReading, banned, topReadings, maxCandidates) {
     return lines.join('\n') + (lines.length ? '\n' : '');
 }
 
-function extractText(line) {
+function extractText(line, dump) {
+    if (dump.format === 'text') return line;
+
     const parts = line.split('\t');
+
+    if (dump.format === 'commonvoice') return parts[dump.sentenceColumn] ?? '';
 
     if (parts.length >= 3) return parts[2];
     if (parts.length === 2) return parts[1];
@@ -263,9 +279,19 @@ async function download(url, dest) {
     await pipeline(Readable.fromWeb(response.body), createWriteStream(dest));
 }
 
-function decompressLines(bz2Path, onLine) {
+function decompressLines(path, onLine) {
+    if (!path.endsWith('.bz2')) {
+        return new Promise((resolve, reject) => {
+            const rl = createInterface({ input: createReadStream(path), crlfDelay: Infinity });
+
+            rl.on('line', onLine);
+            rl.on('close', resolve);
+            rl.on('error', reject);
+        });
+    }
+
     return new Promise((resolve, reject) => {
-        const child = spawn('bzip2', ['-dc', bz2Path]);
+        const child = spawn('bzip2', ['-dc', path]);
         const rl = createInterface({ input: child.stdout, crlfDelay: Infinity });
         let exitCode = null;
         let closed = false;
@@ -334,16 +360,33 @@ function writeBufferWithBackup(path, previousPath, buffer) {
     return true;
 }
 
+function recordSources(record) {
+    if (Array.isArray(record.sources)) return record.sources;
+    if (!record.sourceFile) return [];
+
+    return [{ name: 'Tatoeba', file: record.sourceFile, url: record.sourceUrl, license: record.license, sentences: record.sentences }];
+}
+
 function attributionRecord(stat, generated) {
-    const meta = config.languages[stat.code];
+    const sources = stat.dumps.map(dump => {
+        const source = {
+            name: dump.name,
+            file: dump.file,
+            url: dump.url,
+            license: dump.license,
+            sentences: dump.sentences,
+        };
+
+        if (dump.attribution) source.attribution = dump.attribution;
+        if (dump.manual) source.manual = true;
+
+        return source;
+    });
     const record = {
         code: stat.code,
         mode: stat.mode,
-        tatoebaCode: meta.tatoebaCode,
-        sourceFile: stat.source.file,
-        sourceUrl: `${config.ccbyBaseUrl}/${meta.tatoebaCode}/${stat.source.file}`,
-        license: stat.source.license,
-        sentences: stat.source.sentences,
+        sources,
+        sentences: sources.reduce((total, source) => total + source.sentences, 0),
     };
 
     if (stat.mode === 'words') {
@@ -382,7 +425,7 @@ function writeAttributionRecords(stats) {
 }
 
 function regenerateManifest(exclude = []) {
-    const codes = manifestOrder.filter(code => !exclude.includes(code));
+    const codes = manifestOrder.filter(code => !exclude.includes(code) && existsSync(join(bundledDir, `${code}.js`)));
     const text = 'export default {\n' + codes.map(code => `    ${code}: () => import('./${code}.js'),`).join('\n') + '\n};\n';
 
     return writeIfChanged(join(bundledDir, 'index.js'), text);
@@ -405,25 +448,72 @@ function loadAttributionRecords() {
         });
 }
 
+function sourceCells(record) {
+    const sources = recordSources(record);
+    const files = sources.map(source => `\`${source.file}\``).join('<br>');
+    const licenses = [...new Set(sources.map(source => source.license))].join('<br>');
+    const sentences = record.sentences ?? sources.reduce((total, source) => total + (source.sentences || 0), 0);
+
+    return { files, licenses, sentences };
+}
+
 function regenerateAttribution() {
     const records = loadAttributionRecords();
     const wordRows = records
         .filter(record => record.mode === 'words')
-        .map(record => `| ${record.code} | \`${record.sourceFile}\` | ${record.license} | ${record.sentences.toLocaleString('en')} | ${record.kept.toLocaleString('en')} | ${record.ngramContexts ? record.ngramContexts.toLocaleString('en') : '—'} | ${record.ngramPairs ? record.ngramPairs.toLocaleString('en') : '—'} | ${record.trigramContexts ? record.trigramContexts.toLocaleString('en') : '—'} | ${record.trigramPairs ? record.trigramPairs.toLocaleString('en') : '—'} | ${record.generated} |`)
+        .map(record => {
+            const { files, licenses, sentences } = sourceCells(record);
+
+            return `| ${record.code} | ${files} | ${licenses} | ${sentences.toLocaleString('en')} | ${record.kept.toLocaleString('en')} | ${record.ngramContexts ? record.ngramContexts.toLocaleString('en') : '—'} | ${record.ngramPairs ? record.ngramPairs.toLocaleString('en') : '—'} | ${record.trigramContexts ? record.trigramContexts.toLocaleString('en') : '—'} | ${record.trigramPairs ? record.trigramPairs.toLocaleString('en') : '—'} | ${record.generated} |`;
+        })
         .join('\n');
     const compositionRows = records
         .filter(record => record.mode === 'composition')
-        .map(record => `| ${record.code} | \`${record.sourceFile}\` | ${record.license} | ${record.sentences.toLocaleString('en')} | ${record.readings.toLocaleString('en')} | ${record.generated} |`)
+        .map(record => {
+            const { files, licenses, sentences } = sourceCells(record);
+
+            return `| ${record.code} | ${files} | ${licenses} | ${sentences.toLocaleString('en')} | ${record.readings.toLocaleString('en')} | ${record.generated} |`;
+        })
         .join('\n');
+    const manualSources = records.flatMap(record => recordSources(record)
+        .filter(source => source.manual)
+        .map(source => ({ code: record.code, ...source })));
+    const creditSources = records.flatMap(record => recordSources(record)
+        .filter(source => source.attribution)
+        .map(source => ({ code: record.code, ...source })))
+        .filter((source, index, all) => all.findIndex(entry => entry.attribution === source.attribution) === index);
+    const manualSection = manualSources.length
+        ? `
+## Manually cached corpora
+
+These sources cannot be downloaded automatically by the build script. Download
+the archive from the link below and save it under \`tools/.cache/\` with a name
+matching the listed pattern (browser-added timestamp prefixes are fine); the
+build streams the corpus file out of the archive without extracting it, and
+explicit builds fail with instructions while it is missing.
+
+${manualSources.map(source => `- \`${source.code}\`: \`${source.file}\` — ${source.name} (${source.license}), from ${source.url}`).join('\n')}
+`
+        : '';
+    const creditSection = creditSources.length
+        ? `
+## Source credits
+
+The following sources require attribution when the bundled data is
+redistributed:
+
+${creditSources.map(source => `- ${source.attribution} (${source.license})`).join('\n')}
+`
+        : '';
 
     const text = `# Word List Attribution
 
 The data files referenced below are generated from [Tatoeba](https://tatoeba.org)
-downloads by \`tools/build-wordlists.mjs\` (configuration:
-\`tools/wordlist-sources.json\`). This file itself is generated from the
-per-language records in \`attribution/\`: building a single language updates its
-record and refreshes this file, so per-language builds are preferred over full
-rebuilds (\`--remove <code>\` removes a language).
+downloads and other openly licensed corpora by \`tools/build-wordlists.mjs\`
+(configuration: \`tools/wordlist-sources.json\`). This file itself is generated
+from the per-language records in \`attribution/\`: building a single language
+updates its record and refreshes this file, so per-language builds are preferred
+over full rebuilds (\`--remove <code>\` removes a language).
 
 ## Word lists
 
@@ -449,21 +539,31 @@ ${compositionRows}
 ## Source selection
 
 Both the CC0 and the CC-BY 2.0 FR per-language sentence dumps are downloaded
-for each word-list and Mandarin source; the CC0 dump is used when it contains
-at least ${config.cc0MinSentences.toLocaleString('en')} sentences, otherwise the
-CC-BY dump. The chosen file and license are recorded per language above.
-Japanese furigana transcriptions are published under CC-BY 2.0 FR only, so the
-Japanese composition data is CC-BY regardless of the sentence dump choice.
-
+for each Tatoeba source; the CC0 dump is used when it contains at least
+${config.cc0MinSentences.toLocaleString('en')} sentences, otherwise the CC-BY
+dump. Languages may combine several sources (for example Swahili uses the
+\`swh\` and \`swc\` dumps), and every chosen file and license is recorded per
+language above. Japanese furigana transcriptions are published under CC-BY 2.0
+FR only, so the Japanese composition data is CC-BY regardless of the sentence
+dump choice.
+${manualSection}${creditSection}
 ## License
 
 CC0 1.0 files are released into the public domain; no attribution is required
 (https://creativecommons.org/publicdomain/zero/1.0/). Tatoeba sentences and
 transcriptions under CC-BY 2.0 FR (Creative Commons Attribution 2.0 France,
 https://creativecommons.org/licenses/by/2.0/fr/) require attribution:
-"Tatoeba.org" with a link to https://tatoeba.org. pinyin-pro is MIT licensed
-and is used only to build the Mandarin data; it is not shipped or executed at
-runtime.
+"Tatoeba.org" with a link to https://tatoeba.org. Non-Tatoeba sources are
+credited with their licenses in the tables above; CC0 sources require no
+attribution but are recorded for provenance. The profanity filter used during
+generation includes entries derived from the Shutterstock LDNOOBW list
+(CC-BY 4.0,
+https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words)
+and its CC0 V2 follow-up
+(https://github.com/LDNOOBWV2/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words_V2),
+trimmed to entries that occur in the bundled word lists. pinyin-pro is MIT
+licensed and is used only to build the Mandarin data; it is not shipped or
+executed at runtime.
 
 ## Transformation
 
@@ -556,8 +656,14 @@ async function downloadIfMissing(url, dest, label) {
     await download(url, dest);
 }
 
-async function chooseDump(code, source, cache) {
-    const tatoebaCode = source.tatoebaCode;
+function languageSources(meta) {
+    if (Array.isArray(meta.sources)) return meta.sources;
+
+    return meta.tatoebaCode ? [{ type: 'tatoeba', code: meta.tatoebaCode }] : [];
+}
+
+async function chooseTatoebaDump(code, meta, source, cache) {
+    const tatoebaCode = source.code;
     const urls = dumpUrls(tatoebaCode);
     const ccbyPath = join(cache, `${tatoebaCode}_sentences.tsv.bz2`);
     const cc0Path = join(cache, `${tatoebaCode}_sentences_CC0.tsv.bz2`);
@@ -570,28 +676,612 @@ async function chooseDump(code, source, cache) {
         await downloadIfMissing(urls.cc0, cc0Path, code);
         cc0Count = await countLines(cc0Path);
     } catch (err) {
-        console.log(`[${code}] CC0 dump unavailable (${err.message}); falling back to CC-BY`);
+        console.log(`[${code}] CC0 dump unavailable for ${tatoebaCode} (${err.message}); falling back to CC-BY`);
     }
 
     const ccbyCount = await countLines(ccbyPath);
-    const threshold = source.cc0MinSentences ?? config.cc0MinSentences;
+    const threshold = source.cc0MinSentences ?? meta.cc0MinSentences ?? config.cc0MinSentences;
 
     if (cc0Count >= threshold) {
-        return { path: cc0Path, file: `${tatoebaCode}_sentences_CC0.tsv.bz2`, url: urls.cc0, license: 'CC0 1.0', sentences: cc0Count, ccbyCount };
+        return { name: 'Tatoeba', path: cc0Path, file: `${tatoebaCode}_sentences_CC0.tsv.bz2`, url: urls.cc0, license: 'CC0 1.0', sentences: cc0Count, format: 'tatoeba' };
     }
 
-    return { path: ccbyPath, file: `${tatoebaCode}_sentences.tsv.bz2`, url: urls.ccby, license: 'CC-BY 2.0 FR', sentences: ccbyCount, ccbyCount };
+    return { name: 'Tatoeba', path: ccbyPath, file: `${tatoebaCode}_sentences.tsv.bz2`, url: urls.ccby, license: 'CC-BY 2.0 FR', sentences: ccbyCount, format: 'tatoeba' };
+}
+
+function sha256File(path) {
+    return createHash('sha256').update(readFileSync(path)).digest('hex');
+}
+
+function md5File(path) {
+    return createHash('md5').update(readFileSync(path)).digest('hex');
+}
+
+function escapeRegExp(text) {
+    return text.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function findCacheFiles(cache, pattern) {
+    if (!pattern.includes('*')) {
+        const path = join(cache, pattern);
+
+        return existsSync(path) ? [path] : [];
+    }
+
+    const regex = new RegExp(`^${pattern.split('*').map(escapeRegExp).join('.*')}$`);
+
+    return readdirSync(cache).filter(name => regex.test(name)).sort().map(name => join(cache, name));
+}
+
+function tarLines(archive, entry, onLine) {
+    return new Promise((resolve, reject) => {
+        const child = spawn('tar', ['-xzOf', archive, entry]);
+        const rl = createInterface({ input: child.stdout, crlfDelay: Infinity });
+        let exitCode = null;
+        let closed = false;
+
+        const finish = () => exitCode === 0 ? resolve() : reject(new Error(`tar exited with ${exitCode}`));
+
+        rl.on('line', onLine);
+        rl.on('close', () => {
+            closed = true;
+            if (exitCode !== null) finish();
+        });
+        child.on('exit', code => {
+            exitCode = code;
+            if (closed) finish();
+        });
+        child.on('error', reject);
+    });
+}
+
+function readDumpLines(dump, onLine) {
+    return dump.archiveEntry ? tarLines(dump.path, dump.archiveEntry, onLine) : decompressLines(dump.path, onLine);
+}
+
+function findArchiveEntry(archive, wanted) {
+    return new Promise((resolve, reject) => {
+        const child = spawn('tar', ['-tzf', archive]);
+        let out = '';
+
+        child.stdout.on('data', chunk => {
+            out += chunk;
+        });
+        child.on('error', reject);
+        child.on('exit', code => {
+            if (code !== 0) {
+                reject(new Error(`tar exited with ${code} while listing ${archive}`));
+                return;
+            }
+
+            const match = out.split('\n').filter(Boolean).find(entry => entry === wanted || entry.endsWith(`/${wanted}`));
+
+            if (!match) {
+                reject(new Error(`archive ${archive} has no ${wanted}`));
+                return;
+            }
+
+            resolve(match);
+        });
+    });
+}
+
+function firstArchiveLine(archive, entry) {
+    return new Promise((resolve, reject) => {
+        const child = spawn('tar', ['-xzOf', archive, entry]);
+        const rl = createInterface({ input: child.stdout, crlfDelay: Infinity });
+        let settled = false;
+
+        rl.on('line', line => {
+            if (settled) return;
+
+            settled = true;
+            child.kill();
+            resolve(line);
+        });
+        rl.on('close', () => {
+            if (settled) return;
+
+            settled = true;
+            reject(new Error(`archive ${archive} has no data for ${entry}`));
+        });
+        child.on('error', err => {
+            if (settled) return;
+
+            settled = true;
+            reject(err);
+        });
+    });
+}
+
+async function resolveCommonVoiceDump(code, source, cache, required = true) {
+    const candidates = findCacheFiles(cache, source.cacheFile);
+    const pinned = source.sha256 ? candidates.find(candidate => sha256File(candidate) === source.sha256) : undefined;
+    const path = pinned ?? candidates[0];
+
+    if (!path) {
+        if (!required) {
+            console.log(`[${code}] skipping "${source.dataset}": no cached file matches ${source.cacheFile}`);
+            return null;
+        }
+
+        throw new Error(
+            `[${code}] Common Voice corpus not found in ${cache} (looking for ${source.cacheFile})\n` +
+            `  Download "${source.dataset}" (${source.license}) from:\n` +
+            `    ${source.url}\n` +
+            `  (a free Mozilla Data Collective account is required) and save the archive\n` +
+            `  in ${cache}; the build streams ${source.archiveFile} from it, no extraction\n` +
+            `  needed, and the timestamp prefix some browsers add to the name is fine.`
+        );
+    }
+
+    const actual = sha256File(path);
+
+    if (source.sha256 && actual !== source.sha256) {
+        throw new Error(`[${code}] sha256 mismatch for ${path}: expected ${source.sha256}, got ${actual}`);
+    }
+
+    if (!source.sha256) console.log(`[${code}] ${basename(path)} sha256 ${actual} (pin it in wordlist-sources.json)`);
+
+    let archiveEntry = null;
+    let header;
+
+    if (/\.(tar\.gz|tgz)$/i.test(path)) {
+        archiveEntry = await findArchiveEntry(path, source.archiveFile);
+        header = await firstArchiveLine(path, archiveEntry);
+    } else {
+        header = readFileSync(path, 'utf8').split('\n', 1)[0];
+    }
+
+    const sentenceColumn = header.split('\t').indexOf('sentence');
+
+    if (sentenceColumn === -1) throw new Error(`[${code}] ${path} has no "sentence" column`);
+
+    const dump = {
+        name: source.name ?? 'Common Voice',
+        path,
+        file: basename(path),
+        url: source.url,
+        license: source.license ?? 'CC0 1.0',
+        attribution: source.attribution,
+        manual: source.manual,
+        sentences: 0,
+        format: 'commonvoice',
+        sentenceColumn,
+        skipHeader: true,
+        dedupe: true,
+        archiveEntry,
+    };
+
+    await forEachText([dump], () => {
+        dump.sentences ++;
+    });
+
+    return dump;
+}
+
+async function fetchJson(url, attempts = 4) {
+    let lastError;
+
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+        try {
+            const response = await fetch(url);
+
+            if (response.ok) return await response.json();
+
+            lastError = new Error(`${response.status}${response.statusText ? ` ${response.statusText}` : ''}`);
+
+            if (response.status < 500 || attempt === attempts) break;
+        } catch (err) {
+            lastError = err;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+    }
+
+    throw lastError;
+}
+
+async function resolveHuggingFaceDump(code, source, cache) {
+    const path = join(cache, source.cacheFile);
+    const textField = source.textField ?? 'sentence';
+    let sentences;
+
+    if (existsSync(path)) {
+        sentences = readFileSync(path, 'utf8').split('\n').filter(Boolean);
+        console.log(`[${code}] cached ${source.cacheFile} (${sentences.length} rows)`);
+    } else {
+        sentences = [];
+
+        for (const split of source.splits) {
+            let offset = 0;
+            let total = Infinity;
+
+            while (offset < total) {
+                const url = `https://datasets-server.huggingface.co/rows?dataset=${encodeURIComponent(source.dataset)}&config=${encodeURIComponent(source.config ?? 'default')}&split=${encodeURIComponent(split)}&offset=${offset}&length=100`;
+                const page = await fetchJson(url).catch(err => {
+                    throw new Error(`[${code}] failed to fetch ${url}: ${err.message}`);
+                });
+                total = page.num_rows_total ?? sentences.length;
+
+                for (const entry of page.rows ?? []) {
+                    const text = entry.row?.[textField];
+
+                    if (typeof text === 'string' && text.trim()) sentences.push(text.replace(/[\r\n]+/g, ' ').trim());
+                }
+
+                if (!page.rows?.length) break;
+
+                offset += page.rows.length;
+            }
+        }
+
+        writeFileSync(path, sentences.join('\n') + (sentences.length ? '\n' : ''));
+        console.log(`[${code}] fetched ${sentences.length} rows from ${source.dataset}`);
+    }
+
+    const dump = {
+        name: source.name ?? 'Hugging Face',
+        path,
+        file: source.dataset,
+        url: source.url ?? `https://huggingface.co/datasets/${source.dataset}`,
+        license: source.license ?? 'CC-BY 4.0',
+        attribution: source.attribution,
+        sentences: 0,
+        format: 'text',
+        dedupe: true,
+        normalize: normalizeRepeats,
+    };
+
+    await forEachText([dump], () => {
+        dump.sentences ++;
+    });
+
+    return dump;
+}
+
+function unzipList(archive) {
+    return new Promise((resolve, reject) => {
+        const child = spawn('unzip', ['-Z1', archive]);
+        let out = '';
+
+        child.stdout.on('data', chunk => {
+            out += chunk;
+        });
+        child.on('error', reject);
+        child.on('exit', code => {
+            if (code !== 0) {
+                reject(new Error(`unzip exited with ${code} while listing ${archive}`));
+                return;
+            }
+
+            resolve(out.split('\n').filter(Boolean));
+        });
+    });
+}
+
+function unzipEntry(archive, entry) {
+    return new Promise((resolve, reject) => {
+        const child = spawn('unzip', ['-p', archive, entry]);
+        const chunks = [];
+
+        child.stdout.on('data', chunk => chunks.push(chunk));
+        child.on('error', reject);
+        child.on('exit', code => {
+            if (code !== 0) {
+                reject(new Error(`unzip exited with ${code} while reading ${entry}`));
+                return;
+            }
+
+            resolve(Buffer.concat(chunks));
+        });
+    });
+}
+
+function normalizeRepeats(text) {
+    return text.replace(/(.)\1{2,}/gu, '$1');
+}
+
+function decodeText(buffer) {
+    const utf8 = new TextDecoder('utf-8').decode(buffer);
+    const bad = (utf8.match(/\uFFFD/g) || []).length;
+
+    if (!bad) return utf8;
+
+    const cp1252 = new TextDecoder('windows-1252').decode(buffer);
+    const badCp1252 = (cp1252.match(/\uFFFD/g) || []).length;
+
+    return badCp1252 < bad ? cp1252 : utf8;
+}
+
+async function resolveZenodoDump(code, source, cache, required = true) {
+    const path = join(cache, source.cacheFile);
+    const textPath = join(cache, source.textCacheFile);
+    let lines;
+
+    if (existsSync(textPath)) {
+        lines = readFileSync(textPath, 'utf8').split('\n').filter(Boolean);
+        console.log(`[${code}] cached ${source.textCacheFile} (${lines.length} lines)`);
+    } else {
+        if (!existsSync(path)) {
+            if (!required) {
+                console.log(`[${code}] skipping "${source.name}": ${source.cacheFile} is not cached`);
+                return null;
+            }
+
+            await downloadIfMissing(source.downloadUrl, path, code);
+        }
+
+        if (source.md5) {
+            const actual = md5File(path);
+
+            if (actual !== source.md5) {
+                throw new Error(`[${code}] md5 mismatch for ${path}: expected ${source.md5}, got ${actual}`);
+            }
+        }
+
+        lines = [];
+
+        for (const entry of (await unzipList(path)).filter(name => name.toLowerCase().endsWith('.txt'))) {
+            const text = decodeText(await unzipEntry(path, entry));
+
+            for (const raw of text.split('\n')) {
+                const line = raw
+                    .replace(/^\s*speaker\s*\d+\s*:\s*/i, '')
+                    .replace(/\uFFFD/g, "'")
+                    .replace(/(.)\1{2,}/gu, '$1')
+                    .replace(/[\r\t]+/g, ' ')
+                    .trim();
+
+                if (line.length < 2) continue;
+
+                lines.push(line);
+            }
+        }
+
+        writeFileSync(textPath, lines.join('\n') + (lines.length ? '\n' : ''));
+        console.log(`[${code}] extracted ${lines.length} lines from ${source.file}`);
+    }
+
+    const dump = {
+        name: source.name ?? 'Zenodo',
+        path: textPath,
+        file: source.file,
+        url: source.url,
+        license: source.license ?? 'CC-BY 4.0',
+        attribution: source.attribution,
+        sentences: 0,
+        format: 'text',
+        dedupe: true,
+    };
+
+    await forEachText([dump], () => {
+        dump.sentences ++;
+    });
+
+    return dump;
+}
+
+async function fetchHpltManifest() {
+    const response = await fetch('https://data.hplt-project.org/three/sorted/manifest.json');
+
+    if (!response.ok) throw new Error(`failed to fetch HPLT manifest: ${response.status}`);
+
+    const manifest = new Map();
+
+    for (const line of (await response.text()).split('\n')) {
+        const trimmed = line.trim();
+
+        if (!trimmed) continue;
+
+        const entry = JSON.parse(trimmed);
+
+        manifest.set(entry.name, entry);
+    }
+
+    return manifest;
+}
+
+function orderHpltShards(urls) {
+    const shardNumber = url => {
+        const match = url.match(/(\d+)_(\d+)\.jsonl\.zst$/);
+
+        return match ? { bin: Number(match[1]), shard: Number(match[2]) } : { bin: -1, shard: 0 };
+    };
+
+    return [...urls].sort((a, b) => {
+        const first = shardNumber(a);
+        const second = shardNumber(b);
+
+        return second.bin - first.bin || first.shard - second.shard;
+    });
+}
+
+function cleanHpltText(text) {
+    return text
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+}
+
+async function readHpltDocuments(lines, options, onDocument) {
+    let documents = 0;
+
+    for await (const line of lines) {
+        if (!line.trim()) continue;
+        if (options.stop && options.stop()) break;
+
+        let document;
+
+        try {
+            document = JSON.parse(line);
+        } catch (err) {
+            continue;
+        }
+
+        if (!document || typeof document.text !== 'string' || !document.text.trim()) continue;
+        if (options.filter && document.filter && document.filter !== options.filter) continue;
+
+        if (options.hpltCode && Array.isArray(document.lang) && Array.isArray(document.prob)) {
+            const index = document.lang.indexOf(options.hpltCode);
+
+            if (index === -1 || document.prob[index] < (options.minProb ?? 0.5)) continue;
+        }
+
+        onDocument(document);
+        documents ++;
+
+        if (documents >= options.maxDocuments) break;
+    }
+
+    return documents;
+}
+
+async function resolveHpltDump(code, source, cache) {
+    const textPath = join(cache, `hplt_${source.pack}.txt`);
+    let shards = [];
+
+    if (existsSync(textPath)) {
+        console.log(`[${code}] cached ${basename(textPath)}`);
+    } else {
+        const entry = (await fetchHpltManifest()).get(source.pack);
+
+        if (!entry) throw new Error(`[${code}] HPLT pack "${source.pack}" not found in the manifest`);
+
+        const maxDocuments = source.maxDocuments ?? 25000;
+        const maxSegments = source.maxSegments ?? 150000;
+        const lines = [];
+        let documents = 0;
+
+        for (const url of orderHpltShards(entry.urls)) {
+            if (documents >= maxDocuments || lines.length >= maxSegments) break;
+
+            console.log(`[${code}] streaming ${url}`);
+
+            const response = await fetch(url);
+
+            if (!response.ok) throw new Error(`[${code}] failed to fetch ${url}: ${response.status}`);
+
+            const stream = Readable.fromWeb(response.body).pipe(createZstdDecompress());
+            const rl = createInterface({ input: stream, crlfDelay: Infinity });
+            const before = documents;
+
+            documents += await readHpltDocuments(rl, {
+                hpltCode: source.pack,
+                minProb: source.minProb,
+                filter: source.filter ?? 'keep',
+                maxDocuments: maxDocuments - documents,
+                stop: () => lines.length >= maxSegments,
+            }, document => {
+                for (const raw of cleanHpltText(document.text).split('\n')) {
+                    const segment = raw.trim();
+
+                    if (segment.length >= 2) lines.push(segment);
+                }
+            });
+
+            shards.push(basename(url));
+
+            rl.close();
+            stream.destroy();
+
+            console.log(`[${code}] ${documents} documents (${documents - before} from ${basename(url)})`);
+        }
+
+        writeFileSync(textPath, lines.join('\n') + (lines.length ? '\n' : ''));
+        console.log(`[${code}] cached ${lines.length} segments in ${basename(textPath)} (sha256 ${sha256File(textPath).slice(0, 12)}…)`);
+    }
+
+    const dump = {
+        name: 'HPLT',
+        path: textPath,
+        file: shards.length ? `${source.pack} (${shards.join(', ')})` : source.pack,
+        url: source.url ?? 'https://hplt-project.org/datasets/v3.0',
+        license: source.license ?? 'CC0 1.0',
+        attribution: source.attribution,
+        sentences: 0,
+        format: 'text',
+        dedupe: true,
+    };
+
+    await forEachText([dump], () => {
+        dump.sentences ++;
+    });
+
+    return dump;
+}
+
+async function resolveDumps(code, meta, cache, required = true) {
+    const dumps = [];
+
+    for (const source of languageSources(meta)) {
+        let dump;
+
+        if (source.type === 'tatoeba') {
+            dump = await chooseTatoebaDump(code, meta, source, cache);
+        } else if (source.type === 'commonvoice') {
+            dump = await resolveCommonVoiceDump(code, source, cache, required);
+        } else if (source.type === 'huggingface') {
+            dump = await resolveHuggingFaceDump(code, source, cache);
+        } else if (source.type === 'zenodo') {
+            dump = await resolveZenodoDump(code, source, cache, required);
+        } else if (source.type === 'hplt') {
+            dump = await resolveHpltDump(code, source, cache);
+        } else {
+            throw new Error(`[${code}] unsupported source type "${source.type}"`);
+        }
+
+        if (dump) dumps.push(dump);
+    }
+
+    if (!dumps.length) return null;
+
+    return dumps;
+}
+
+async function forEachText(dumps, onText) {
+    for (const dump of dumps) {
+        const seen = dump.dedupe ? new Set() : null;
+        let first = true;
+
+        await readDumpLines(dump, line => {
+            if (first) {
+                first = false;
+                if (dump.skipHeader) return;
+            }
+
+            let text = extractText(line, dump);
+
+            if (!text) return;
+
+            if (dump.normalize) text = dump.normalize(text);
+
+            if (seen) {
+                const key = text.normalize('NFC');
+
+                if (seen.has(key)) return;
+
+                seen.add(key);
+            }
+
+            onText(text);
+        });
+    }
 }
 
 function compareWords(a, b) {
     return a < b ? -1 : a > b ? 1 : 0;
 }
 
-async function countTrigrams(code, source, dump, kept, pairCounts, vocabularySize, idByWord) {
-    const trigramTopK = config.trigramTopK ?? 4;
-    const trigramMinPairCount = config.trigramMinPairCount ?? 3;
-    const trigramMinCount = config.trigramMinCount ?? 3;
-    const trigramMaxContexts = config.trigramMaxContexts ?? 50000;
+async function countTrigrams(code, source, dumps, kept, pairCounts, vocabularySize, idByWord) {
+    const trigramTopK = source.trigramTopK ?? config.trigramTopK ?? 4;
+    const trigramMinPairCount = source.trigramMinPairCount ?? config.trigramMinPairCount ?? 3;
+    const trigramMinCount = source.trigramMinCount ?? config.trigramMinCount ?? 3;
+    const trigramMaxContexts = source.trigramMaxContexts ?? config.trigramMaxContexts ?? 50000;
 
     if (trigramTopK <= 0) return [];
 
@@ -610,11 +1300,7 @@ async function countTrigrams(code, source, dump, kept, pairCounts, vocabularySiz
 
     const trigramCounts = new Map();
 
-    await decompressLines(dump.path, line => {
-        const text = extractText(line);
-
-        if (!text) return;
-
+    await forEachText(dumps, text => {
         let previous = -1;
         let previous2 = -1;
 
@@ -669,10 +1355,10 @@ async function countTrigrams(code, source, dump, kept, pairCounts, vocabularySiz
     return contexts;
 }
 
-async function buildNgrams(code, source, dump, kept) {
+async function buildNgrams(code, source, dumps, kept) {
     const vocabularySize = kept.length;
-    const topK = config.ngramTopK ?? 8;
-    const minCount = config.ngramMinCount ?? 2;
+    const topK = source.ngramTopK ?? config.ngramTopK ?? 8;
+    const minCount = source.ngramMinCount ?? config.ngramMinCount ?? 2;
     const idByWord = new Map();
 
     for (let i = 0; i < vocabularySize; i ++) idByWord.set(kept[i][0], i);
@@ -681,11 +1367,7 @@ async function buildNgrams(code, source, dump, kept) {
 
     const pairCounts = new Map();
 
-    await decompressLines(dump.path, line => {
-        const text = extractText(line);
-
-        if (!text) return;
-
+    await forEachText(dumps, text => {
         let previous = -1;
 
         for (const token of tokenize(text, source.script)) {
@@ -705,7 +1387,7 @@ async function buildNgrams(code, source, dump, kept) {
         }
     });
 
-    const trigramContexts = await countTrigrams(code, source, dump, kept, pairCounts, vocabularySize, idByWord);
+    const trigramContexts = await countTrigrams(code, source, dumps, kept, pairCounts, vocabularySize, idByWord);
     const byContext = new Map();
 
     for (const [key, count] of pairCounts) {
@@ -758,15 +1440,14 @@ async function buildNgrams(code, source, dump, kept) {
     };
 }
 
-async function buildWords(code, source, dump, profanity, stats) {
-    console.log(`[${code}] counting tokens (${source.script}, ${dump.license})`);
+async function buildWords(code, source, dumps, profanity, stats) {
+    const licenses = [...new Set(dumps.map(dump => dump.license))].join(', ');
+    const sentences = dumps.reduce((total, dump) => total + dump.sentences, 0);
+
+    console.log(`[${code}] counting tokens (${source.script}, ${licenses})`);
     const counts = new Map();
 
-    await decompressLines(dump.path, line => {
-        const text = extractText(line);
-
-        if (!text) return;
-
+    await forEachText(dumps, text => {
         for (const token of tokenize(text, source.script)) {
             counts.set(token, (counts.get(token) || 0) + 1);
         }
@@ -778,7 +1459,7 @@ async function buildWords(code, source, dump, profanity, stats) {
 
     const banned = profanity[code] || new Set();
     const filtered = entries.filter(([word]) => !banned.has(word));
-    const kept = filtered.slice(0, config.topN);
+    const kept = filtered.slice(0, source.topN ?? config.topN);
     const text = kept.map(([word]) => word).join('\n') + '\n';
     const roundTripped = parseWordList(text);
 
@@ -789,17 +1470,17 @@ async function buildWords(code, source, dump, profanity, stats) {
         throw new Error(`[${code}] word list does not survive parseWordList (${offending.length} lost): ${offending.slice(0, 5).join(', ')}`);
     }
 
-    console.log(`[${code}] ${dump.sentences} sentences, ${counts.size} unique tokens, ${kept.length} kept (${entries.length - filtered.length} filtered)`);
+    console.log(`[${code}] ${sentences} sentences, ${counts.size} unique tokens, ${kept.length} kept (${entries.length - filtered.length} filtered)`);
 
     mkdirSync(join(hostLanguagesDir, code), { recursive: true });
 
-    const ngrams = await buildNgrams(code, source, dump, kept);
+    const ngrams = await buildNgrams(code, source, dumps, kept);
     const referencePath = join(hostLanguagesDir, code, 'autocomplete.txt');
 
     writeWithBackup(referencePath, join(hostLanguagesDir, code, 'autocomplete-previous.txt'), text);
     writeIfChanged(join(bundledDir, `${code}.js`), `export default \`${escapeTemplateLiteral(text)}\`;\n`);
 
-    stats.push({ code, mode: 'words', source: dump, tokens: counts.size, kept: kept.length, ngrams });
+    stats.push({ code, mode: 'words', dumps, tokens: counts.size, kept: kept.length, ngrams });
 }
 
 async function buildZhComposition(source, dump, profanity, stats) {
@@ -811,7 +1492,7 @@ async function buildZhComposition(source, dump, profanity, stats) {
     console.log(`[zh] deriving pinyin readings (${dump.license})`);
 
     await decompressLines(dump.path, line => {
-        const text = extractText(line);
+        const text = extractText(line, dump);
 
         if (!text) return;
 
@@ -826,7 +1507,7 @@ async function buildZhComposition(source, dump, profanity, stats) {
 
     writeWithBackup(join(hostLanguagesDir, 'zh', 'composition.txt'), join(hostLanguagesDir, 'zh', 'composition-previous.txt'), text);
 
-    stats.push({ code: 'zh', mode: 'composition', source: dump, readings: byReading.size, sentences });
+    stats.push({ code: 'zh', mode: 'composition', dumps: [dump], readings: byReading.size, sentences });
 }
 
 async function buildJaComposition(source, profanity, stats, cache) {
@@ -855,7 +1536,7 @@ async function buildJaComposition(source, profanity, stats, cache) {
 
     writeWithBackup(join(hostLanguagesDir, 'ja', 'composition.txt'), join(hostLanguagesDir, 'ja', 'composition-previous.txt'), text);
 
-    stats.push({ code: 'ja', mode: 'composition', source: { file: 'jpn_transcriptions.tsv.bz2', url, license: 'CC-BY 2.0 FR', sentences: rows }, readings: byReading.size, sentences: rows });
+    stats.push({ code: 'ja', mode: 'composition', dumps: [{ name: 'Tatoeba', file: 'jpn_transcriptions.tsv.bz2', url, license: 'CC-BY 2.0 FR', sentences: rows }], readings: byReading.size, sentences: rows });
 }
 
 async function main() {
@@ -894,12 +1575,14 @@ async function main() {
             continue;
         }
 
-        const dump = await chooseDump(code, source, cacheDir);
+        const dumps = await resolveDumps(code, source, cacheDir, subset.length > 0);
+
+        if (!dumps) continue;
 
         if (source.mode === 'composition') {
-            await buildZhComposition(source, dump, profanity, stats);
+            await buildZhComposition(source, dumps[0], profanity, stats);
         } else {
-            await buildWords(code, source, dump, profanity, stats);
+            await buildWords(code, source, dumps, profanity, stats);
         }
     }
 
@@ -915,7 +1598,13 @@ async function main() {
     }
 }
 
-main().catch(err => {
-    console.error(err);
-    process.exit(1);
-});
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
+
+if (isMain) {
+    main().catch(err => {
+        console.error(err);
+        process.exit(1);
+    });
+}
+
+export { cleanHpltText, decodeText, extractText, findArchiveEntry, findCacheFiles, forEachText, languageSources, orderHpltShards, readHpltDocuments, recordSources, resolveCommonVoiceDump, resolveDumps, resolveHpltDump, sourceCells };

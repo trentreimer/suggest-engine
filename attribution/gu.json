@@ -1,0 +1,23 @@
+{
+    "code": "gu",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "HPLT",
+            "file": "guj_Gujr (10_1.jsonl.zst, 9_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 132912,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 132912,
+    "tokens": 446482,
+    "kept": 10000,
+    "ngramContexts": 9996,
+    "ngramPairs": 78342,
+    "trigramContexts": 36934,
+    "trigramPairs": 82609,
+    "ngramBytes": 999312,
+    "generated": "2026-09-20"
+}

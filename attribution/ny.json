@@ -1,0 +1,23 @@
+{
+    "code": "ny",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "HPLT",
+            "file": "nya_Latn (10_1.jsonl.zst, 9_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 136301,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 136301,
+    "tokens": 206909,
+    "kept": 10000,
+    "ngramContexts": 9983,
+    "ngramPairs": 67986,
+    "trigramContexts": 31480,
+    "trigramPairs": 60577,
+    "ngramBytes": 826052,
+    "generated": "2026-09-20"
+}

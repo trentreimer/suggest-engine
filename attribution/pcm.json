@@ -1,0 +1,39 @@
+{
+    "code": "pcm",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Common Voice",
+            "file": "1789491984474-cv-corpus-27.0-2026-09-11-pcm.tar.gz",
+            "url": "https://mozilladatacollective.com/datasets/cmu5ufsxn007snq07xuxba0uc",
+            "license": "CC0 1.0",
+            "sentences": 987,
+            "manual": true
+        },
+        {
+            "name": "Nigerian Pidgin ASR",
+            "file": "asr-nigerian-pidgin/nigerian-pidgin-1.0",
+            "url": "https://huggingface.co/datasets/asr-nigerian-pidgin/nigerian-pidgin-1.0",
+            "license": "CC-BY 4.0",
+            "sentences": 4276,
+            "attribution": "Rufai, A. M., Abeeb, A., Oduntan, E., Arulogun, T., Adegboro, O., & Ajisafe, D. (2025). Towards End-to-End Training of Automatic Speech Recognition for Nigerian Pidgin. arXiv:2010.11123. Dataset: asr-nigerian-pidgin/nigerian-pidgin-1.0, https://huggingface.co/datasets/asr-nigerian-pidgin/nigerian-pidgin-1.0"
+        },
+        {
+            "name": "CENCOS",
+            "file": "CENCOS corpus.zip",
+            "url": "https://zenodo.org/records/7314016",
+            "license": "CC-BY 4.0",
+            "sentences": 5567,
+            "attribution": "Agbo, O. F., & Plag, I. (2022). Corpus of English and Nigerian Pidgin Code-switching (CENCOS), https://doi.org/10.5281/zenodo.7314016"
+        }
+    ],
+    "sentences": 10830,
+    "tokens": 8980,
+    "kept": 8000,
+    "ngramContexts": 2482,
+    "ngramPairs": 6996,
+    "trigramContexts": 5762,
+    "trigramPairs": 8342,
+    "ngramBytes": 122400,
+    "generated": "2026-09-19"
+}

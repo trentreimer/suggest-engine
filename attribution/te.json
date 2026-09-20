@@ -1,0 +1,23 @@
+{
+    "code": "te",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "HPLT",
+            "file": "tel_Telu (10_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 106524,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 106524,
+    "tokens": 601136,
+    "kept": 10000,
+    "ngramContexts": 9996,
+    "ngramPairs": 78770,
+    "trigramContexts": 27191,
+    "trigramPairs": 52044,
+    "ngramBytes": 800820,
+    "generated": "2026-09-20"
+}

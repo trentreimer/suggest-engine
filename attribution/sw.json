@@ -1,0 +1,29 @@
+{
+    "code": "sw",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "swh_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/swh/swh_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 4583
+        },
+        {
+            "name": "Tatoeba",
+            "file": "swc_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/swc/swc_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 23822
+        }
+    ],
+    "sentences": 28405,
+    "tokens": 29966,
+    "kept": 10000,
+    "ngramContexts": 4155,
+    "ngramPairs": 10408,
+    "trigramContexts": 1586,
+    "trigramPairs": 2115,
+    "ngramBytes": 87772,
+    "generated": "2026-09-19"
+}

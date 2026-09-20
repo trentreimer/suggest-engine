@@ -364,7 +364,7 @@ var SuggestEngine = class {
     const language = String(lang || this.language).toLowerCase();
     if (!/^[a-z]{2,3}(-[a-z0-9]+)*$/.test(language)) return false;
     if (!this.bundledManifest) {
-      this.bundledManifest = (await import("./chunks/languages-QH2C23FT.js")).default;
+      this.bundledManifest = (await import("./chunks/languages-PCR5ARFH.js")).default;
     }
     const loader = this.bundledManifest[language];
     if (!loader) return false;

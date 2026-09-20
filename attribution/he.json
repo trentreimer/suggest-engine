@@ -1,0 +1,22 @@
+{
+    "code": "he",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "heb_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/heb/heb_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 212692
+        }
+    ],
+    "sentences": 212692,
+    "tokens": 69179,
+    "kept": 10000,
+    "ngramContexts": 8373,
+    "ngramPairs": 30134,
+    "trigramContexts": 11342,
+    "trigramPairs": 16485,
+    "ngramBytes": 327512,
+    "generated": "2026-09-20"
+}

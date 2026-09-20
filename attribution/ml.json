@@ -1,0 +1,23 @@
+{
+    "code": "ml",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "HPLT",
+            "file": "mal_Mlym (10_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 137257,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 137257,
+    "tokens": 1261970,
+    "kept": 10000,
+    "ngramContexts": 9966,
+    "ngramPairs": 69629,
+    "trigramContexts": 8175,
+    "trigramPairs": 11705,
+    "ngramBytes": 450592,
+    "generated": "2026-09-20"
+}

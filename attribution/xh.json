@@ -1,0 +1,23 @@
+{
+    "code": "xh",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "HPLT",
+            "file": "xho_Latn (10_1.jsonl.zst, 9_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 131796,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 131796,
+    "tokens": 380835,
+    "kept": 10000,
+    "ngramContexts": 9985,
+    "ngramPairs": 68056,
+    "trigramContexts": 23353,
+    "trigramPairs": 38121,
+    "ngramBytes": 671504,
+    "generated": "2026-09-20"
+}

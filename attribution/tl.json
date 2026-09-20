@@ -1,0 +1,22 @@
+{
+    "code": "tl",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "tgl_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/tgl/tgl_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 79097
+        }
+    ],
+    "sentences": 79097,
+    "tokens": 24313,
+    "kept": 10000,
+    "ngramContexts": 8307,
+    "ngramPairs": 23374,
+    "trigramContexts": 15349,
+    "trigramPairs": 22225,
+    "ngramBytes": 355092,
+    "generated": "2026-09-20"
+}

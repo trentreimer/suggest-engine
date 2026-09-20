@@ -1,0 +1,22 @@
+{
+    "code": "mr",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "mar_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/mar/mar_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 86809
+        }
+    ],
+    "sentences": 86809,
+    "tokens": 25706,
+    "kept": 10000,
+    "ngramContexts": 7337,
+    "ngramPairs": 21072,
+    "trigramContexts": 6895,
+    "trigramPairs": 8995,
+    "ngramBytes": 219512,
+    "generated": "2026-09-20"
+}

@@ -1,0 +1,23 @@
+{
+    "code": "kn",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "HPLT",
+            "file": "kan_Knda (10_1.jsonl.zst, 9_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 137802,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 137802,
+    "tokens": 900795,
+    "kept": 10000,
+    "ngramContexts": 9981,
+    "ngramPairs": 72708,
+    "trigramContexts": 11451,
+    "trigramPairs": 17845,
+    "ngramBytes": 513768,
+    "generated": "2026-09-20"
+}

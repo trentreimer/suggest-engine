@@ -1,0 +1,22 @@
+{
+    "code": "ha",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "hau_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/hau/hau_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 21848
+        }
+    ],
+    "sentences": 21848,
+    "tokens": 10736,
+    "kept": 10000,
+    "ngramContexts": 2665,
+    "ngramPairs": 7739,
+    "trigramContexts": 1962,
+    "trigramPairs": 2881,
+    "ngramBytes": 74228,
+    "generated": "2026-09-20"
+}

@@ -1,0 +1,22 @@
+{
+    "code": "fa",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "pes_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/pes/pes_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 31792
+        }
+    ],
+    "sentences": 31792,
+    "tokens": 16733,
+    "kept": 10000,
+    "ngramContexts": 4227,
+    "ngramPairs": 11522,
+    "trigramContexts": 2491,
+    "trigramPairs": 3465,
+    "ngramBytes": 105300,
+    "generated": "2026-09-20"
+}

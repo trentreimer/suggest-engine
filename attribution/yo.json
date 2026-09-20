@@ -1,0 +1,23 @@
+{
+    "code": "yo",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "HPLT",
+            "file": "yor_Latn",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 136493,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 136493,
+    "tokens": 112157,
+    "kept": 10000,
+    "ngramContexts": 9912,
+    "ngramPairs": 58096,
+    "trigramContexts": 44341,
+    "trigramPairs": 109335,
+    "ngramBytes": 1083984,
+    "generated": "2026-09-20"
+}

@@ -1,0 +1,23 @@
+{
+    "code": "ig",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "HPLT",
+            "file": "ibo_Latn (9_1.jsonl.zst, 8_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 136374,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 136374,
+    "tokens": 126336,
+    "kept": 10000,
+    "ngramContexts": 9954,
+    "ngramPairs": 58849,
+    "trigramContexts": 43138,
+    "trigramPairs": 100947,
+    "ngramBytes": 1044072,
+    "generated": "2026-09-20"
+}

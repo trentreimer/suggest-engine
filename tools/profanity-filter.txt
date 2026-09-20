@@ -1,6 +1,21 @@
 # Project-owned profanity filter for word list generation.
 # Entries are exact-matched against tokens after NFC normalization and lowercasing.
 # Edit freely, then rerun tools/build-wordlists.mjs to regenerate the word lists.
+#
+# Sections [it] [pl] [nl] [ko] [fa] [tl] include entries derived from the
+# Shutterstock LDNOOBW list (CC-BY 4.0,
+# https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words),
+# trimmed to high-confidence entries that occur in the bundled word lists.
+# Section [mr] also includes entries from LDNOOBW V2 (CC0 1.0,
+# https://github.com/LDNOOBWV2/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words_V2).
+# Sections [uk] [he] [el] [vi] [mr] [ha] [ur] [so] [yo] [sn] [rw] are provisional
+# and pending native-speaker review. Only words actually present in the generated
+# lists are filtered, so these lists stay lean and avoid over-filtering common
+# vocabulary.
+#
+# Reviewed and intentionally left unfiltered for now because no high-confidence
+# vulgarities or slurs occur in the bundled lists (revisit with native speakers):
+# am ta ml te zu ig xh gu pa kn om ny wo.
 
 [en]
 fuck
@@ -214,3 +229,166 @@ tolol
 শালা
 শালি
 হিজড়া
+
+[sw]
+kuma
+mboo
+mkundu
+mavi
+malaya
+mjinga
+pumbavu
+shenzi
+kihiyo
+nyoko
+
+[pcm]
+fuck
+fucking
+fucked
+fucker
+fuckers
+motherfucker
+shit
+bullshit
+asshole
+assholes
+bitch
+bitches
+cunt
+cunts
+dick
+dicks
+cock
+pussy
+whore
+slut
+sluts
+yansh
+ashawo
+ode
+mumu
+werey
+kolo
+oloshi
+oloriburuku
+yeye
+
+# LDNOOBW-derived (CC-BY 4.0), audited against the bundled word lists.
+
+[it]
+cagare
+cazzata
+cazzo
+coglioni
+culo
+merda
+puttana
+troia
+
+[pl]
+dupek
+gówno
+kurwa
+
+[nl]
+flikker
+godverdomme
+hoer
+klootzak
+kont
+neuken
+pik
+reet
+rotzak
+schijten
+stront
+teef
+
+[ko]
+보지
+씨발
+자지
+
+[fa]
+کس
+کون
+کیر
+منی
+
+[tl]
+bayag
+bobo
+kantot
+tanga
+ulol
+
+# Project-owned, pending native-speaker review.
+
+[uk]
+хуй
+хуйня
+нахуй
+мудак
+курва
+лайно
+
+[he]
+זונה
+חרא
+דפוק
+מטומטם
+זין
+
+[el]
+μαλάκα
+σκατά
+αρχίδια
+
+[vi]
+đụ
+đéo
+cặc
+lồn
+buồi
+đĩ
+điếm
+
+[mr]
+लवडा
+पुच्ची
+रांड
+गांड
+अश्लील
+कुत्री
+डिल्डो
+वेश्या
+शिश्न
+योनी
+वीर्य
+हस्तमैथुन
+
+[ha]
+wawa
+karuwa
+
+# Provisional (LDNOOBW V2 CC0 for [mr]; project-owned for the rest); pending
+# native-speaker review.
+
+[ur]
+لنڈ
+سور
+
+[so]
+nacas
+doqon
+
+[yo]
+òde
+yeye
+
+[sn]
+benzi
+
+[rw]
+umusazi

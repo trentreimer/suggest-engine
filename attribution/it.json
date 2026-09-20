@@ -1,0 +1,22 @@
+{
+    "code": "it",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "ita_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/ita/ita_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 987629
+        }
+    ],
+    "sentences": 987629,
+    "tokens": 74551,
+    "kept": 10000,
+    "ngramContexts": 9707,
+    "ngramPairs": 58068,
+    "trigramContexts": 37509,
+    "trigramPairs": 85302,
+    "ngramBytes": 931856,
+    "generated": "2026-09-20"
+}
