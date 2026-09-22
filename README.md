@@ -31,7 +31,7 @@ engine.suggest('wo', 'in the ');
 
 ## Full example
 
-NOTE: This example uses hard-coded strings for demonstration purposes, but an application 
+Note: This example uses hard-coded strings for demonstration purposes, but an application 
 would often supply strings programmatically.
 
 ```js
@@ -40,26 +40,26 @@ import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-e
 const engine = new SuggestEngine({
     language: 'en',
     maxSuggestions: 5,
-    userWords: { storagePrefix: 'myapp' },   // optional component; see below
+    userWords: { storagePrefix: 'myapp' }, // optional component; see below
 });
 
 await engine.loadWordList();
 // Add a custom list of words as well
-await engine.addWordList('main', '/wordlists/en.txt');   // url | string[] | { text }
+await engine.addWordList('main', '/wordlists/en.txt'); // url | string[] | { text }
 // Context ranking - works best with the default word list
-await engine.loadSuggestionContext();                     // context ranking for the bundled data
+await engine.loadSuggestionContext();
 
-const word = engine.wordAt('Hello Sar', 10);              // → 'Sar'
-const suggestions = engine.suggest(word, 'Hello ');       // context: text before the current word
+const word = engine.wordAt('Hello Sar', 10); // → 'Sar'
+const suggestions = engine.suggest(word, 'Hello '); // context: text before the current word
 // → [{ text: 'Sarah', insertSuffix: 'rah', source: 'user-words' }, ...]
 
-engine.suggestAt('Hello Sar', 10);                        // word + preceding word in one call
+engine.suggestAt('Hello Sar', 10); // word + preceding word in one call
 // → same ranking as above, derived from text and caret
 
-engine.nextWords('Hello');                                // likely next words with no prefix typed
+engine.nextWords('Hello'); // likely next words with no prefix typed
 // → [{ text: 'Sarah', insertSuffix: 'Sarah', source: 'user-words' }, ...]
 
-engine.recordWord('Sarah');   // call when the user completes a word
+engine.recordWord('Sarah'); // call when the user completes a word
 ```
 
 The host owns all editor interaction: feed the engine text plus a caret index,
