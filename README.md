@@ -31,8 +31,9 @@ engine.suggest('wo', 'in the ');
 
 ## Full example
 
-This example uses hard-coded strings to demonstrate `wordAt()`, `suggestAt()`, `nextWords()` 
-and `recordWord()`, but an application would often supply strings programmatically.
+This example uses hard-coded strings to demonstrate methods like `wordAt()`, `suggest()`, 
+`suggestAt()`, `nextWords()` and `recordWord()`, but an application would often supply 
+strings programmatically.
 
 ```js
 import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.0/dist/suggest-engine.esm.js';
