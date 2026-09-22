@@ -11,8 +11,7 @@ Zero runtime dependencies. Plain ES modules.
 
 ## Quick start
 
-Suggestions work out of the box with the bundled English word list. A language
-is required — pass one to the constructor or call `setLanguage()`; the engine
+A language is required — pass one to the constructor or call `setLanguage()`; the engine
 stays inert until then.
 
 ```js
