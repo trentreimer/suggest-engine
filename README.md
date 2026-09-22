@@ -31,7 +31,7 @@ engine.suggest('wo', 'in the ');
 
 ## Full example
 
-This example uses hard-coded strings to demonstrate methods like `wordAt()`, `suggest()`, 
+This example uses hard-coded strings to demonstrate the methods `wordAt()`, `suggest()`, 
 `suggestAt()`, `nextWords()` and `recordWord()`, but an application would often supply 
 those strings programmatically.
 
