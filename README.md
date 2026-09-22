@@ -1,10 +1,11 @@
 # suggest-engine
 
 Editor-agnostic autocomplete suggestion engine with optional user word learning
-and optional context ranking. Words a user types repeatedly (names of
-family, friends, places) are learned on-device and suggested ahead of shipped
-dictionaries; when context data is loaded, suggestions also account for the word
-that precedes the caret.
+and optional context ranking. Words a user types repeatedly are learned on-device 
+and suggested ahead of shipped dictionaries. 
+
+When context data is loaded, suggestions also account for the word that precedes 
+the caret.
 
 Zero runtime dependencies. Plain ES modules.
 
@@ -19,7 +20,7 @@ import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-e
 
 const engine = new SuggestEngine({ language: 'en' });
 
-await engine.loadWordList();
+await engine.loadWordList();   // Loads the supplied word list for the selected language
 await engine.loadSuggestionContext();   // optional suggestion context data
 
 engine.suggest('hel');
@@ -27,48 +28,6 @@ engine.suggest('hel');
 
 engine.suggest('wo', 'in the ');
 // → [{ text: 'world', ... }, ...] — the previous word promotes likely continuations
-```
-
-Inline in a page, the same entry point works from a module script:
-
-```html
-<script type="module">
-    import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.6.0/dist/suggest-engine.esm.js';
-
-    const engine = new SuggestEngine({ language: 'en' });
-
-    await engine.loadWordList();
-    await engine.loadSuggestionContext();
-
-    console.log(engine.suggest('hel'));
-</script>
-```
-
-`text` is the completed word and `insertSuffix` is what to insert after the
-typed prefix. From a local clone, import `./src/index.js` instead. Node and Bun
-cannot import remote modules — see [Server-side](#server-side).
-
-### Server-side
-
-Browsers (`<script type="module">`) and Deno can import the CDN URL directly;
-Node and Bun cannot import `https:` modules, so install the package from its Git
-repository or vendor `dist/` together with `languages/`:
-
-```sh
-npm install github:trentreimer/suggest-engine
-```
-
-`loadWordList()` resolves bundled language data relative to the bundle,
-so it works from an installed or vendored copy. `loadSuggestionContext()` uses
-`fetch`, and its default base URL is a `file:` path under Node, which Node's
-`fetch` rejects: pass an `http(s)` base URL, or hand the bytes to
-`addContextModel()`:
-
-```js
-import { readFileSync } from 'node:fs';
-
-await engine.loadWordList();
-await engine.addContextModel(readFileSync('node_modules/suggest-engine/languages/en.ngram.bin'));
 ```
 
 ## Full example
@@ -82,8 +41,13 @@ const engine = new SuggestEngine({
     userWords: { storagePrefix: 'myapp' },   // optional component; see below
 });
 
+// You can add a custom word list for suggestion candidates.
+// Can be used after loadWordList() or instead of the default word list.
 await engine.addWordList('main', '/wordlists/en.txt');   // url | string[] | { text }
+
+// Context ranking - works best with the default word list
 await engine.loadSuggestionContext();                     // context ranking for the bundled data
+
 engine.setLanguage('ar');                                 // switches sources + user-words bucket
 await engine.addWordList('main', '/wordlists/ar.txt');
 
@@ -104,6 +68,64 @@ The host owns all editor interaction: feed the engine text plus a caret index,
 insert `insertSuffix` at the caret when a suggestion is chosen, and call
 `recordWord` when a word is completed (space, punctuation, Enter, or choosing a
 suggestion all count as completion).
+
+### Supported languages
+
+The engine ships data for 45 languages: 43 word-list languages, whose bundled
+dictionaries complete typed prefixes, plus Mandarin and Japanese as
+composition languages, which convert pinyin or kana readings into characters
+(see [Composition languages](#composition-languages)).
+
+| Code | Language | Data |
+|---|---|---|
+| `en` | English | word list |
+| `fr` | French | word list |
+| `es` | Spanish | word list |
+| `de` | German | word list |
+| `pt` | Portuguese | word list |
+| `id` | Indonesian | word list |
+| `ru` | Russian | word list |
+| `ar` | Arabic | word list |
+| `hi` | Hindi | word list |
+| `bn` | Bengali | word list |
+| `sw` | Swahili | word list |
+| `pcm` | Nigerian Pidgin | word list |
+| `it` | Italian | word list |
+| `tr` | Turkish | word list |
+| `vi` | Vietnamese | word list |
+| `fa` | Persian | word list |
+| `mr` | Marathi | word list |
+| `ha` | Hausa | word list |
+| `tl` | Tagalog | word list |
+| `uk` | Ukrainian | word list |
+| `pl` | Polish | word list |
+| `nl` | Dutch | word list |
+| `ko` | Korean | word list |
+| `he` | Hebrew | word list |
+| `el` | Greek | word list |
+| `ur` | Urdu | word list |
+| `ta` | Tamil | word list |
+| `te` | Telugu | word list |
+| `am` | Amharic | word list |
+| `yo` | Yoruba | word list |
+| `zu` | Zulu | word list |
+| `gu` | Gujarati | word list |
+| `pa` | Punjabi | word list |
+| `ml` | Malayalam | word list |
+| `kn` | Kannada | word list |
+| `om` | Oromo | word list |
+| `ig` | Igbo | word list |
+| `xh` | Xhosa | word list |
+| `so` | Somali | word list |
+| `sn` | Shona | word list |
+| `rw` | Kinyarwanda | word list |
+| `ny` | Chichewa | word list |
+| `wo` | Wolof | word list |
+| `zh` | Mandarin | composition (pinyin) |
+| `ja` | Japanese | composition (kana) |
+
+Corpus provenance, licensing and generation details for all bundled data are
+documented in [ATTRIBUTION.md](ATTRIBUTION.md).
 
 ### Custom vocabulary only
 
@@ -220,12 +242,8 @@ the same option shapes as the constructor.
 
 The library ships frequency-ordered word lists for 43 languages in
 `languages/` (one JS module per language, plus a manifest and the
-connector-character map `word-chars.js`): `en`, `fr`, `es`,
-`de`, `pt`, `id`, `ru`, `ar`, `hi`, `bn`, `sw`, `pcm`, `it`, `tr`, `vi`, `fa`,
-`mr`, `ha`, `tl`, `uk`, `pl`, `nl`, `ko`, `he`, `el`, `ur`, `ta`, `te`, `am`,
-`yo`, `zu`, `gu`, `pa`, `ml`, `kn`, `om`, `ig`, `xh`, `so`, `sn`, `rw`, `ny`,
-and `wo`. Mandarin and Japanese ship as composition languages instead —
-see [Composition languages](#composition-languages). `pcm` combines a manually
+connector-character map `word-chars.js`) — the bundled word-list languages are
+listed in [Supported languages](#supported-languages). `pcm` combines a manually
 cached Common Voice archive (CC0) with two
 automatically fetched CC-BY 4.0 corpora; rebuilding it needs the archive
 described in [Regenerating the data](#regenerating-the-data). The `ur`, `ta`,
@@ -317,6 +335,29 @@ engine.compositionReset();
   frequent characters surface ahead of corpus frequency next time.
   `compositionSuggestions(context?, limit?)` exposes the ranking for hosts
   that render candidates themselves.
+
+### Server-side
+
+Browsers (`<script type="module">`) and Deno can import the CDN URL directly;
+Node and Bun cannot import `https:` modules, so install the package from its Git
+repository or vendor `dist/` together with `languages/`:
+
+```sh
+npm install github:trentreimer/suggest-engine
+```
+
+`loadWordList()` resolves bundled language data relative to the bundle,
+so it works from an installed or vendored copy. `loadSuggestionContext()` uses
+`fetch`, and its default base URL is a `file:` path under Node, which Node's
+`fetch` rejects: pass an `http(s)` base URL, or hand the bytes to
+`addContextModel()`:
+
+```js
+import { readFileSync } from 'node:fs';
+
+await engine.loadWordList();
+await engine.addContextModel(readFileSync('node_modules/suggest-engine/languages/en.ngram.bin'));
+```
 
 ### Regenerating the data
 
