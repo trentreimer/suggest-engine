@@ -274,14 +274,16 @@ Corpus provenance, licensing and generation details are documented in
 **Prefer per-language builds.** `node tools/build-wordlists.mjs <code>` (for
 example `node tools/build-wordlists.mjs bn`) adds or updates just that one
 language: its bundled word list or composition file, its context model
-(`languages/<code>.ngram.bin`), the host project's reference copies
-(`autocomplete.txt`, `ngrams.bin`), its attribution record
+(`languages/<code>.ngram.bin`), its attribution record
 (`attribution/<code>.json`), and its entry in the connector-character map
 (`languages/word-chars.js`, see [Word characters](#word-characters)).
 `ATTRIBUTION.md` is regenerated from the per-language records after every
 build, so it stays in sync without a full rebuild. Files whose generated
 content did not change are left untouched — no rewrite, no `-previous.txt`
-backup.
+backup. When `HOST_DIR=/path/to/host` is set, the build additionally writes the
+host project's reference copies (`autocomplete.txt`, `ngrams.bin`,
+`composition.txt`) under `<HOST_DIR>/languages/`; without it, nothing outside
+this repository is touched.
 
 A full build (`node tools/build-wordlists.mjs`, no arguments) re-downloads and
 regenerates every language and is only needed after changing global
@@ -301,9 +303,11 @@ shards first, and stop at `maxDocuments` (default 25,000) or `maxSegments`
 `tools/.cache/hplt_<pack>.txt`, so later builds run offline. The segment budget
 matters because HPLT documents are web pages of varying length.
 
-The host project's reference copies are written to a sibling `click.totype.org`
-checkout by default; set `HOST_DIR=/path/to/host` to target a different host
-project root.
+Host projects are updated independently of this repository. A build writes
+host reference copies only when `HOST_DIR=/path/to/host` names the host
+project root; for the zh/ja composition data the site fetches at runtime
+(`composition.txt`), regenerate with, for example,
+`HOST_DIR=../click.totype.org node tools/build-wordlists.mjs zh`.
 
 #### Manually cached corpora
 

@@ -151,8 +151,8 @@ section for the language exists in `tools/profanity-filter.txt`.
 
 ## Superseded content
 
-Lists replaced by this pipeline are retained in the host project
-(`languages/<code>/autocomplete-previous.txt`,
+When HOST_DIR is set, lists replaced by this pipeline are retained in the host
+project (`languages/<code>/autocomplete-previous.txt`,
 `languages/<code>/composition-previous.txt`,
 `languages/<code>/ngrams-previous.bin`) for reference only. They include
 the pre-pipeline lists of undocumented provenance and the original

@@ -13,8 +13,10 @@ import { parseWordList } from '../src/word-lists.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const libDir = join(__dirname, '..');
 const bundledDir = join(libDir, 'languages');
-const repoRoot = process.env.HOST_DIR ? resolve(process.env.HOST_DIR) : join(libDir, '..', 'click.totype.org');
-const hostLanguagesDir = join(repoRoot, 'languages');
+// Host reference copies (autocomplete.txt, ngrams.bin, composition.txt) are
+// written only when HOST_DIR points at a host project root — builds never
+// touch sibling checkouts otherwise.
+const hostLanguagesDir = process.env.HOST_DIR ? join(resolve(process.env.HOST_DIR), 'languages') : null;
 const cacheDir = join(__dirname, '.cache');
 
 const config = JSON.parse(readFileSync(join(__dirname, 'wordlist-sources.json'), 'utf8'));
@@ -654,8 +656,8 @@ section for the language exists in \`tools/profanity-filter.txt\`.
 
 ## Superseded content
 
-Lists replaced by this pipeline are retained in the host project
-(\`languages/<code>/autocomplete-previous.txt\`,
+When HOST_DIR is set, lists replaced by this pipeline are retained in the host
+project (\`languages/<code>/autocomplete-previous.txt\`,
 \`languages/<code>/composition-previous.txt\`,
 \`languages/<code>/ngrams-previous.bin\`) for reference only. They include
 the pre-pipeline lists of undocumented provenance and the original
@@ -1477,14 +1479,15 @@ async function buildNgrams(code, source, dumps, kept, extras) {
         ? Buffer.from(encodeNgramModel({ language: code, vocabHash: fnv1a(words.join('\n')), contexts, trigramContexts }))
         : null;
     const bundledPath = join(bundledDir, `${code}.ngram.bin`);
-    const hostPath = join(hostLanguagesDir, code, 'ngrams.bin');
 
     if (buffer) {
         writeBufferIfChanged(bundledPath, buffer);
-        writeBufferWithBackup(hostPath, join(hostLanguagesDir, code, 'ngrams-previous.bin'), buffer);
+
+        if (hostLanguagesDir) writeBufferWithBackup(join(hostLanguagesDir, code, 'ngrams.bin'), join(hostLanguagesDir, code, 'ngrams-previous.bin'), buffer);
     } else {
         rmSync(bundledPath, { force: true });
-        rmSync(hostPath, { force: true });
+
+        if (hostLanguagesDir) rmSync(join(hostLanguagesDir, code, 'ngrams.bin'), { force: true });
     }
 
     const pairs = contexts.reduce((total, context) => total + context.successors.length, 0);
@@ -1536,12 +1539,12 @@ async function buildWords(code, source, dumps, profanity, stats) {
 
     console.log(`[${code}] ${sentences} sentences, ${counts.size} unique tokens, ${kept.length} kept (${entries.length - filtered.length} filtered)` + (wordChars ? `, connector chars ${[...wordChars].map(ch => `U+${ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`).join(' ')}` : ''));
 
-    mkdirSync(join(hostLanguagesDir, code), { recursive: true });
+    if (hostLanguagesDir) {
+        mkdirSync(join(hostLanguagesDir, code), { recursive: true });
+        writeWithBackup(join(hostLanguagesDir, code, 'autocomplete.txt'), join(hostLanguagesDir, code, 'autocomplete-previous.txt'), text);
+    }
 
     const ngrams = await buildNgrams(code, source, dumps, kept, candidates);
-    const referencePath = join(hostLanguagesDir, code, 'autocomplete.txt');
-
-    writeWithBackup(referencePath, join(hostLanguagesDir, code, 'autocomplete-previous.txt'), text);
     writeIfChanged(join(bundledDir, `${code}.js`), `export default \`${escapeTemplateLiteral(text)}\`;\n`);
 
     stats.push({ code, mode: 'words', dumps, tokens: counts.size, kept: kept.length, ngrams, wordChars });
@@ -1569,7 +1572,7 @@ async function buildZhComposition(source, dump, profanity, stats) {
 
     console.log(`[zh] ${sentences} sentences, ${byReading.size} readings`);
 
-    writeWithBackup(join(hostLanguagesDir, 'zh', 'composition.txt'), join(hostLanguagesDir, 'zh', 'composition-previous.txt'), text);
+    if (hostLanguagesDir) writeWithBackup(join(hostLanguagesDir, 'zh', 'composition.txt'), join(hostLanguagesDir, 'zh', 'composition-previous.txt'), text);
 
     stats.push({ code: 'zh', mode: 'composition', dumps: [dump], readings: byReading.size, sentences });
 }
@@ -1598,7 +1601,7 @@ async function buildJaComposition(source, profanity, stats, cache) {
 
     console.log(`[ja] ${rows} transcriptions, ${byReading.size} readings`);
 
-    writeWithBackup(join(hostLanguagesDir, 'ja', 'composition.txt'), join(hostLanguagesDir, 'ja', 'composition-previous.txt'), text);
+    if (hostLanguagesDir) writeWithBackup(join(hostLanguagesDir, 'ja', 'composition.txt'), join(hostLanguagesDir, 'ja', 'composition-previous.txt'), text);
 
     stats.push({ code: 'ja', mode: 'composition', dumps: [{ name: 'Tatoeba', file: 'jpn_transcriptions.tsv.bz2', url, license: 'CC-BY 2.0 FR', sentences: rows }], readings: byReading.size, sentences: rows });
 }
@@ -1661,6 +1664,10 @@ async function main() {
         console.log(`\nSubset build${changedRecords.length ? ` — attribution record(s) updated for ${changedRecords.join(', ')}` : ' — attribution unchanged'}. ATTRIBUTION.md is in sync.`);
     } else {
         console.log('\nFull build complete. Tip: prefer per-language builds (node tools/build-wordlists.mjs <code>) to avoid re-downloading every corpus.');
+    }
+
+    if (!process.env.HOST_DIR && stats.length) {
+        console.log('Host reference copies not written (set HOST_DIR=<host project root> to write them).');
     }
 }
 
