@@ -37,7 +37,7 @@ console.log(`vocabulary: ${vocabularySize} words, model: ${contextCount} bigram 
 const engine = new SuggestEngine({ language: 'en', maxSuggestions: 5 });
 
 await engine.addWordList('bundled', words);
-await engine.addNgramModel(new NgramModel(buffer));
+await engine.addContextModel(new NgramModel(buffer));
 
 const contextWord = words[0];
 const contextText = `${contextWord} `;

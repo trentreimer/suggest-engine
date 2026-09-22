@@ -1,16 +1,19 @@
+import { escapeForCharacterClass } from './word-lists.js';
+
 export class UserWords {
-    constructor({ storagePrefix = 'suggest-engine', promoteThreshold = 2, maxWords = 300 } = {}) {
+    constructor({ storagePrefix = 'suggest-engine', recordAfter = 2, maxWords = 300 } = {}) {
         this.storageKey = `${storagePrefix}:user-words`;
-        this.promoteThreshold = promoteThreshold;
+        this.recordAfter = recordAfter;
         this.maxWords = maxWords;
-        this.validWordRegex = /^[\p{L}\p{M}'\-]+$/u;
         this.language = 'en';
         this.data = null;
         this.storageAvailable = true;
+        this.setLanguage(this.language);
     }
 
-    setLanguage(language) {
+    setLanguage(language, extraChars = '') {
         this.language = String(language || 'en').toLowerCase();
+        this.validWordRegex = new RegExp(`^[\\p{L}\\p{M}'\\-${escapeForCharacterClass(extraChars)}]+$`, 'u');
     }
 
     ensureLoaded() {
@@ -82,8 +85,8 @@ export class UserWords {
         const bucket = this.bucket();
         const entry = bucket[word.trim().toLowerCase()];
 
-        if (entry && entry.count < this.promoteThreshold) {
-            entry.count = this.promoteThreshold;
+        if (entry && entry.count < this.recordAfter) {
+            entry.count = this.recordAfter;
             entry.last = Date.now();
             this.write();
         }
@@ -104,7 +107,7 @@ export class UserWords {
         for (const key of Object.keys(bucket)) {
             const entry = bucket[key];
 
-            if (entry.count < this.promoteThreshold) continue;
+            if (entry.count < this.recordAfter) continue;
             if (key.length <= wanted.length) continue;
             if (!key.startsWith(wanted)) continue;
 

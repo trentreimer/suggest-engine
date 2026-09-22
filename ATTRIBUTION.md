@@ -30,8 +30,8 @@ bigram context models) and reference copies in the host project
 | it | `ita_sentences.tsv.bz2` | CC-BY 2.0 FR | 987,629 | 10,000 | 9,707 | 58,068 | 37,509 | 85,302 | 2026-09-20 |
 | tr | `tur_sentences.tsv.bz2` | CC-BY 2.0 FR | 749,204 | 10,000 | 9,012 | 51,484 | 24,156 | 43,228 | 2026-09-20 |
 | vi | `vie_sentences.tsv.bz2` | CC-BY 2.0 FR | 33,184 | 5,013 | 2,410 | 9,441 | 6,213 | 9,164 | 2026-09-20 |
-| fa | `pes_sentences.tsv.bz2` | CC-BY 2.0 FR | 31,792 | 10,000 | 4,227 | 11,522 | 2,491 | 3,465 | 2026-09-20 |
-| mr | `mar_sentences.tsv.bz2` | CC-BY 2.0 FR | 86,809 | 10,000 | 7,337 | 21,072 | 6,895 | 8,995 | 2026-09-20 |
+| fa | `pes_sentences.tsv.bz2` | CC-BY 2.0 FR | 31,792 | 10,000 | 4,232 | 11,076 | 1,958 | 2,657 | 2026-09-22 |
+| mr | `mar_sentences.tsv.bz2` | CC-BY 2.0 FR | 86,809 | 10,000 | 7,323 | 21,052 | 6,849 | 8,938 | 2026-09-22 |
 | ha | `hau_sentences.tsv.bz2` | CC-BY 2.0 FR | 21,848 | 10,000 | 2,665 | 7,739 | 1,962 | 2,881 | 2026-09-20 |
 | tl | `tgl_sentences.tsv.bz2` | CC-BY 2.0 FR | 79,097 | 10,000 | 8,307 | 23,374 | 15,349 | 22,225 | 2026-09-20 |
 | uk | `ukr_sentences.tsv.bz2` | CC-BY 2.0 FR | 188,811 | 10,000 | 6,799 | 21,913 | 9,259 | 14,017 | 2026-09-20 |
@@ -122,7 +122,9 @@ executed at runtime.
 ## Transformation
 
 Word lists: NFC normalization, lowercasing, token extraction (per-language
-script letters, combining marks, apostrophes and hyphens; minimum length 2),
+script letters, combining marks, apostrophes and hyphens, plus corpus-derived
+per-language connector characters such as ZWNJ/ZWJ, shipped in
+`languages/word-chars.js`; minimum length 2),
 frequency counting, profanity filtering (`tools/profanity-filter.txt`,
 project-owned and user-editable), frequency-descending sort with alphabetical
 tie-break, top 10000 retained.

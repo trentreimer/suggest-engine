@@ -11,12 +11,12 @@
         }
     ],
     "sentences": 31792,
-    "tokens": 16733,
+    "tokens": 19561,
     "kept": 10000,
-    "ngramContexts": 4227,
-    "ngramPairs": 11522,
-    "trigramContexts": 2491,
-    "trigramPairs": 3465,
-    "ngramBytes": 105300,
-    "generated": "2026-09-20"
+    "ngramContexts": 4232,
+    "ngramPairs": 11076,
+    "trigramContexts": 1958,
+    "trigramPairs": 2657,
+    "ngramBytes": 96048,
+    "generated": "2026-09-22"
 }

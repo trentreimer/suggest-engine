@@ -56,6 +56,18 @@ test('invalid words are rejected', () => {
     assert.equal(words.record(42), false);
 });
 
+test('language connector characters are accepted only when configured', () => {
+    globalThis.localStorage = mockStorage();
+    const words = new UserWords();
+
+    words.setLanguage('fa', '\u200C');
+    assert.equal(words.record('می\u200cروم'), true);
+    assert.equal(words.record('می رو م'), false);
+
+    words.setLanguage('fa');
+    assert.equal(words.record('می\u200cروم'), false);
+});
+
 test('add makes a word immediately suggestible', () => {
     globalThis.localStorage = mockStorage();
     const words = new UserWords();

@@ -7,6 +7,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
     cleanHpltText,
+    connectorCandidates,
+    deriveWordChars,
     forEachText,
     languageSources,
     orderHpltShards,
@@ -15,7 +17,9 @@ import {
     resolveCommonVoiceDump,
     resolveHpltDump,
     sourceCells,
+    tokenize,
 } from '../tools/build-wordlists.mjs';
+import { parseWordList } from '../src/word-lists.js';
 
 const hasTar = spawnSync('tar', ['--version']).status === 0;
 
@@ -45,6 +49,33 @@ test('languageSources normalizes tatoebaCode and sources arrays', () => {
     assert.deepEqual(languageSources({ tatoebaCode: 'eng' }), [{ type: 'tatoeba', code: 'eng' }]);
     assert.deepEqual(languageSources({ sources: [{ type: 'tatoeba', code: 'swh' }] }), [{ type: 'tatoeba', code: 'swh' }]);
     assert.deepEqual(languageSources({}), []);
+});
+
+test('tokenize keeps corpus connectors inside words only when configured', () => {
+    const sentence = 'می\u200cروم است';
+
+    assert.deepEqual(tokenize(sentence, 'Arab', '\u200C'), ['می\u200cروم', 'است']);
+    assert.deepEqual(tokenize(sentence, 'Arab'), ['می', 'روم', 'است']);
+});
+
+test('tokenize trims connectors at token edges and splits on anything else', () => {
+    assert.deepEqual(tokenize("'-don't'-", 'Latn'), ["don't"]);
+    assert.deepEqual(tokenize('می\u200cروم-', 'Arab', '\u200C'), ['می\u200cروم']);
+    assert.deepEqual(tokenize('ab#cd', 'Latn'), ['ab', 'cd']);
+});
+
+test('deriveWordChars picks the candidates present in kept words', () => {
+    assert.equal(deriveWordChars(['می\u200cروم', 'است']), '\u200C');
+    assert.equal(deriveWordChars(['است', 'هست']), '');
+    assert.equal(deriveWordChars(['a\u200db', 'c\u200dd'], connectorCandidates), '\u200D');
+    assert.equal(deriveWordChars(['x\u200cy', 'a\u200db'], '\u200C\u200D'), '\u200C\u200D');
+});
+
+test('parseWordList truncates at characters outside the language word chars', () => {
+    assert.deepEqual(parseWordList('می\u200cروم'), ['می']);
+    assert.deepEqual(parseWordList('می\u200cروم', '\u200C'), ['می\u200cروم']);
+    assert.deepEqual(parseWordList('l’homme'), ["l'homme"]);
+    assert.deepEqual(parseWordList('ab#cd', ''), ['ab']);
 });
 
 test('attribution helpers handle legacy and multi-source records', () => {

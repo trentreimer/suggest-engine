@@ -1,7 +1,7 @@
 # suggest-engine
 
 Editor-agnostic autocomplete suggestion engine with optional user word learning
-and optional bigram context ranking. Words a user types repeatedly (names of
+and optional context ranking. Words a user types repeatedly (names of
 family, friends, places) are learned on-device and suggested ahead of shipped
 dictionaries; when context data is loaded, suggestions also account for the word
 that precedes the caret.
@@ -10,15 +10,17 @@ Zero runtime dependencies. Plain ES modules.
 
 ## Quick start
 
-Suggestions work out of the box with the bundled English word list.
+Suggestions work out of the box with the bundled English word list. A language
+is required — pass one to the constructor or call `setLanguage()`; the engine
+stays inert until then.
 
 ```js
-import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.4.0/dist/suggest-engine.esm.js';
+import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.6.0/dist/suggest-engine.esm.js';
 
-const engine = new SuggestEngine();
+const engine = new SuggestEngine({ language: 'en' });
 
-await engine.loadBundledWordList();
-await engine.loadBundledNgrams();   // optional bigram context data
+await engine.loadWordList();
+await engine.loadSuggestionContext();   // optional suggestion context data
 
 engine.suggest('hel');
 // → [{ text: 'help', insertSuffix: 'p', source: 'bundled' }, ...]
@@ -31,12 +33,12 @@ Inline in a page, the same entry point works from a module script:
 
 ```html
 <script type="module">
-    import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.4.0/dist/suggest-engine.esm.js';
+    import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.6.0/dist/suggest-engine.esm.js';
 
-    const engine = new SuggestEngine();
+    const engine = new SuggestEngine({ language: 'en' });
 
-    await engine.loadBundledWordList();
-    await engine.loadBundledNgrams();
+    await engine.loadWordList();
+    await engine.loadSuggestionContext();
 
     console.log(engine.suggest('hel'));
 </script>
@@ -56,23 +58,23 @@ repository or vendor `dist/` together with `languages/`:
 npm install github:trentreimer/suggest-engine
 ```
 
-`loadBundledWordList()` resolves bundled language data relative to the bundle,
-so it works from an installed or vendored copy. `loadBundledNgrams()` uses
+`loadWordList()` resolves bundled language data relative to the bundle,
+so it works from an installed or vendored copy. `loadSuggestionContext()` uses
 `fetch`, and its default base URL is a `file:` path under Node, which Node's
 `fetch` rejects: pass an `http(s)` base URL, or hand the bytes to
-`addNgramModel()`:
+`addContextModel()`:
 
 ```js
 import { readFileSync } from 'node:fs';
 
-await engine.loadBundledWordList();
-await engine.addNgramModel(readFileSync('node_modules/suggest-engine/languages/en.ngram.bin'));
+await engine.loadWordList();
+await engine.addContextModel(readFileSync('node_modules/suggest-engine/languages/en.ngram.bin'));
 ```
 
 ## Full example
 
 ```js
-import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.4.0/dist/suggest-engine.esm.js';
+import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.6.0/dist/suggest-engine.esm.js';
 
 const engine = new SuggestEngine({
     language: 'en',
@@ -81,11 +83,11 @@ const engine = new SuggestEngine({
 });
 
 await engine.addWordList('main', '/wordlists/en.txt');   // url | string[] | { text }
-await engine.loadBundledNgrams();                         // context ranking for the bundled data
+await engine.loadSuggestionContext();                     // context ranking for the bundled data
 engine.setLanguage('ar');                                 // switches sources + user-words bucket
 await engine.addWordList('main', '/wordlists/ar.txt');
 
-const word = engine.wordBefore('Hello Sar', 10);          // → 'Sar'
+const word = engine.wordAt('Hello Sar', 10);              // → 'Sar'
 const suggestions = engine.suggest(word, 'Hello ');       // context: text before the current word
 // → [{ text: 'Sarah', insertSuffix: 'rah', source: 'user-words' }, ...]
 
@@ -103,19 +105,39 @@ insert `insertSuffix` at the caret when a suggestion is chosen, and call
 `recordWord` when a word is completed (space, punctuation, Enter, or choosing a
 suggestion all count as completion).
 
+### Custom vocabulary only
+
+The bundled dictionaries are opt-in. An application that only wants a small
+list of suggestions simply never calls `loadWordList()` and registers its own
+words:
+
+```js
+const engine = new SuggestEngine({ language: 'en' });
+await engine.addWordList('personal', ['mama', 'Sarah', 'school', 'water']);
+
+engine.suggest('sc');
+// → [{ text: 'school', insertSuffix: 'hool', source: 'personal' }]
+```
+
+Registration order is suggestion priority, and user-word learning works as
+usual. One caveat: `nextWords()` successors and context ranking are keyed to
+the bundled word list (context models are hash-validated against it), so with
+custom lists only, `suggest(word, context)` falls back to plain source order
+and `nextWords()` falls back to user words.
+
 ### Context ranking
 
-When an ngram model is loaded for the active language and a context is passed,
-matches predicted by the two preceding words (trigram) are promoted first,
-followed by matches predicted by the preceding word alone (bigram), each in
-count order; matching user words come next, then remaining matches in source
-order. Without context — or without an ngram model, or when the model does not
-match the bundled word list — results are exactly the frequency-ranked ones:
+When context data is loaded for the active language and a context is passed,
+matches predicted by the previous two words are promoted first, followed by
+matches predicted by the previous word alone, each in count order; matching user
+words come next, then remaining matches in source order. Without context — or
+without context data, or when the data does not match the bundled word list —
+results are exactly the frequency-ranked ones:
 
-| Priority | `suggest(word)` | `suggest(word, context)` with a model |
+| Priority | `suggest(word)` | `suggest(word, context)` with context data |
 |---|---|---|
-| 1 | user words (by frequency) | trigram matches (count order) |
-| 2 | sources in registration order | bigram-only matches (count order) |
+| 1 | user words (by frequency) | matches for the previous two words (count order) |
+| 2 | sources in registration order | matches for the previous word alone (count order) |
 | 3 | — | user words (by frequency) |
 | 4 | — | sources in registration order |
 
@@ -125,15 +147,25 @@ the word being typed and up to two preceding words from the host's own text, so
 no extra state is needed; `nextWords(context)` serves keyboard-style "word after
 the space" suggestions when no prefix is typed.
 
+### Word characters
+
+Word boundaries are language-owned. Letters and combining marks are always word
+characters, apostrophes and hyphens connect everywhere, and a language may add
+connector characters of its own — derived from its corpus at build time and
+shipped in `languages/word-chars.js` (for example ZWNJ for Persian, ZWJ for
+Marathi, so `می‌روم` is one word). One rule governs all three places that
+define word characters: tokenizing host text (`wordAt`/`previousWords`),
+parsing word lists (`parseWordList`), and validating learned user words.
+`setLanguage()` applies the language's set; hosts never configure it.
+
 ## API
 
 ### Constructor options
 
 | Option | Default | Description |
 |---|---|---|
-| `language` | `'en'` | Active language; user words are bucketed per language |
+| `language` | *(required)* | Active language; user words are bucketed per language. Pass it here or call `setLanguage()` — suggestions stay empty and word learning is off until a language is set |
 | `maxSuggestions` | `5` | Maximum results returned by `suggest()` |
-| `wordBoundaryChars` | `"'-"` | Extra non-letter characters treated as part of a word (letters and combining marks are always included) |
 | `userWords` | *(omitted)* | Optional user-word learning component; see below |
 
 ### User words (`userWords`)
@@ -145,42 +177,45 @@ Presence enables the component; absence disables it entirely:
 | *(omitted)* / `false` / `null` | Component off — zero storage reads or writes |
 | `true` | On, all defaults |
 | `{}` | On, all defaults |
-| `{ storagePrefix, promoteThreshold, maxWords }` | On, provided knobs override defaults |
+| `{ storagePrefix, recordAfter, maxWords }` | On, provided knobs override defaults |
 
 Defaults for unspecified properties: `storagePrefix: 'suggest-engine'`,
-`promoteThreshold: 2` (a word typed twice becomes suggestible),
+`recordAfter: 2` (a word typed twice becomes suggestible),
 `maxWords: 300` (eviction by lowest count, then oldest use).
 
 **Disabled contract:** `suggest()` returns word-list results only;
 `recordWord()` / `addWord()` return `false`; `userWords()` returns `[]`;
-`removeUserWord()` / `clearUserWords()` are no-ops. No storage access occurs.
+`removeWord()` / `clearUserWords()` are no-ops. No storage access occurs.
+The component can be enabled later with `enableUserWords()`, optionally with
+the same option shapes as the constructor.
 
 ### Methods
 
 | Method | Description |
 |---|---|
-| `setLanguage(lang)` | Switch active language for sources and the user-words bucket |
-| `addWordList(name, source)` | Register a word list for the current language (`url` string, `string[]`, or `{ text }`); same name replaces |
-| `addNgramModel(source)` | Register a bigram model for the current language (`url` string, `ArrayBuffer`, or `NgramModel`); same language replaces |
-| `loadBundledNgrams(baseUrl?)` | Fetch the bundled `<language>.ngram.bin` (resolves `false` when none ships); the default base URL resolves relative to the module, so pass one where no module URL is available (for example Node) |
-| `wordBefore(text, caret)` | Word ending at the caret (`'`/`-`-aware) |
-| `wordsBefore(text, index, count)` | Up to `count` words ending before `index`, nearest first (used for context) |
-| `suggest(word, context?)` | Ranked suggestions: with `context` (the text before the current word) and a matching ngram model, trigram matches first (count order), then bigram-only matches, then user words (frequency order), then word lists **in registration order** — word list order is suggestion priority, so ship lists most-common-first; deduped case-insensitively; `text` carries the word's own casing, `insertSuffix` is what to insert after the typed prefix |
-| `suggestAt(text, caret)` | `wordBefore` + preceding-word context + `suggest` in one call; the host's normal entry point |
-| `nextWords(context)` | Likely next words when no prefix is typed: trigram successors of the last two words, then bigram successors of the last word, then user words by frequency |
+| `setLanguage(lang)` | Switch active language for sources, the user-words bucket, and the tokenizer's connector characters; throws `TypeError` when called without a language |
+| `addWordList(name, source)` | Register a word list for the current language (`url` string, `string[]`, or `{ text }`); same name replaces; requires a language to be set first |
+| `addContextModel(source)` | Register suggestion context data for the current language (`url` string, `ArrayBuffer`, or `NgramModel`); same language replaces; requires a language to be set first |
+| `loadSuggestionContext(baseUrl?)` | Fetch the bundled `<language>.ngram.bin` (resolves `false` when none ships); the default base URL resolves relative to the module, so pass one where no module URL is available (for example Node) |
+| `wordAt(text, caret)` | Word ending at the caret — letters, combining marks, apostrophes/hyphens, and the active language's connector characters are word characters |
+| `previousWords(text, index, count)` | Up to `count` words ending before `index`, nearest first (used for context) |
+| `suggest(word, context?)` | Ranked suggestions: with `context` (the text before the current word) and matching context data, matches for the previous two words first (count order), then matches for the previous word alone, then user words (frequency order), then word lists **in registration order** — word list order is suggestion priority, so ship lists most-common-first; deduped case-insensitively; `text` carries the word's own casing, `insertSuffix` is what to insert after the typed prefix |
+| `suggestAt(text, caret)` | `wordAt` + preceding-word context + `suggest` in one call; the host's normal entry point |
+| `nextWords(context)` | Likely next words when no prefix is typed: successors of the last two words, then successors of the last word, then user words by frequency |
 | `recordWord(word)` | Count a completed word (validates letters/marks plus `'`/`-`, minimum length 2) |
 | `addWord(word)` | Add immediately suggestible (manual entry) |
 | `userWordsEnabled` | `true` while the user-words component is active (getter) |
 | `userWords()` | `[{ word, count }]` sorted by frequency |
-| `removeUserWord(lower)` | Remove one word (lowercase key) |
+| `removeWord(word)` | Remove one word (any casing) |
 | `clearUserWords()` | Remove all words for the active language |
-| `enableUserWords()` | Re-enable the user-words component after a `disableUserWords()`; starts from empty storage (no-op if already enabled or never configured) |
+| `enableUserWords(options?)` | Enable the user-words component — with the same option shapes as the constructor's `userWords` (`true`/`{}`/`{ storagePrefix, recordAfter, maxWords }`). With no argument it resumes the previously configured options, or all defaults if never configured; provided options replace the stored config for later disable/enable cycles. No-op if already enabled or when passed `false`/`null` |
 | `disableUserWords()` | Disable the component and wipe its stored words for **all** languages (no-op if already disabled) |
 
 ### Bundled word lists
 
 The library ships frequency-ordered word lists for 43 languages in
-`languages/` (one JS module per language, plus a manifest): `en`, `fr`, `es`,
+`languages/` (one JS module per language, plus a manifest and the
+connector-character map `word-chars.js`): `en`, `fr`, `es`,
 `de`, `pt`, `id`, `ru`, `ar`, `hi`, `bn`, `sw`, `pcm`, `it`, `tr`, `vi`, `fa`,
 `mr`, `ha`, `tl`, `uk`, `pl`, `nl`, `ko`, `he`, `el`, `ur`, `ta`, `te`, `am`,
 `yo`, `zu`, `gu`, `pa`, `ml`, `kn`, `om`, `ig`, `xh`, `so`, `sn`, `rw`, `ny`,
@@ -193,32 +228,35 @@ described there.
 Load the list for the active language with:
 
 ```js
-await engine.loadBundledWordList();       // current language; resolves false if none bundled
-await engine.loadBundledWordList('ar');   // explicit language
+await engine.loadWordList();       // current language; resolves false if none bundled
+await engine.loadWordList('ar');   // explicit language
 ```
 
 Registering does not switch the active language — call `setLanguage()` first, as
 with any source. Hosts can layer their own `addWordList()` sources on top;
 earlier-registered sources rank ahead of bundled data. The `languages/*.js` files hold
-the lists verbatim as template literals and are parsed with `parseWordList`, so
-regenerating from raw word-list text is a copy-paste into a template literal.
+the lists verbatim as template literals and are parsed with `parseWordList`
+using the active language's connector characters (see
+[Word characters](#word-characters)), so regenerating from raw word-list text is
+a copy-paste into a template literal.
 
 ### Bundled context models
 
 Context models ship alongside the word lists as `languages/<code>.ngram.bin`
-for every bundled word-list language — a bigram section plus a trigram section
-where the corpus supports one — and are copied to `dist/languages/` so the CDN
+for every bundled word-list language — a section of one-word contexts plus a
+section of two-word contexts where the corpus supports them — and are copied to
+`dist/languages/` so the CDN
 build can fetch them next to the bundle:
 
 ```js
-await engine.loadBundledNgrams();         // current language; false if none bundled
-await engine.loadBundledNgrams('https://cdn.example/languages/');   // explicit base
+await engine.loadSuggestionContext();         // current language; false if none bundled
+await engine.loadSuggestionContext('https://cdn.example/languages/');   // explicit base
 ```
 
-`loadBundledNgrams()` resolves the default base relative to the ESM bundle
+`loadSuggestionContext()` resolves the default base relative to the ESM bundle
 (`dist/languages/`), which works for both a local clone and jsDelivr. Under Node
 that default is a `file:` URL, which Node's `fetch` rejects — pass an `http(s)`
-base URL there, or use `addNgramModel()` with the file contents (see
+base URL there, or use `addContextModel()` with the file contents (see
 [Server-side](#server-side)). Models are
 compact typed arrays decoded without parsing, reference positions in the bundled
 word list, and are validated against it by hash at load time. Sizes range from
@@ -237,8 +275,9 @@ Corpus provenance, licensing and generation details are documented in
 example `node tools/build-wordlists.mjs bn`) adds or updates just that one
 language: its bundled word list or composition file, its context model
 (`languages/<code>.ngram.bin`), the host project's reference copies
-(`autocomplete.txt`, `ngrams.bin`), and its attribution record
-(`attribution/<code>.json`).
+(`autocomplete.txt`, `ngrams.bin`), its attribution record
+(`attribution/<code>.json`), and its entry in the connector-character map
+(`languages/word-chars.js`, see [Word characters](#word-characters)).
 `ATTRIBUTION.md` is regenerated from the per-language records after every
 build, so it stays in sync without a full rebuild. Files whose generated
 content did not change are left untouched — no rewrite, no `-previous.txt`
@@ -252,8 +291,9 @@ configuration in `tools/wordlist-sources.json` (for example `topN`,
 
 A language may combine several sources: `sw` concatenates Tatoeba's `swh` and
 `swc` dumps, and `pcm` reads the Common Voice archive described below. Source
-types and per-language overrides (`topN`, ngram thresholds) live in
-`tools/wordlist-sources.json` alongside the source list.
+types and per-language overrides (`topN`, ngram thresholds, and `wordChars` to
+fix a language's connector characters instead of deriving them from the corpus)
+live in `tools/wordlist-sources.json` alongside the source list.
 
 `hplt` sources fetch the CC0 HPLT v3.0 manifest, stream the highest-quality
 shards first, and stop at `maxDocuments` (default 25,000) or `maxSegments`
@@ -321,7 +361,8 @@ el.selectionStart)` gives context-aware suggestions with no extra bookkeeping; c
 `getText`); insert with `quill.insertText(index, insertSuffix)`. Deleting one
 character should delete a grapheme cluster, not a code point — use
 `Intl.Segmenter` with `granularity: 'grapheme'` so combining marks (Arabic
-harakat, Devanagari matras) and emoji stay intact.
+harakat, Devanagari matras), zero-width joiners/non-joiners inside words
+(Persian `می‌روم`, Devanagari half forms), and emoji stay intact.
 
 **contenteditable** — computing a plain-text caret index is the fiddly part; walk
 text nodes up to the caret and sum lengths, or maintain a mirror string as Quill
@@ -338,7 +379,7 @@ npm run build   # esbuild → dist/
 
 `npm run build` writes `dist/suggest-engine.esm.js` — the ESM entry; bundled
 language data loads lazily from `dist/chunks/` on demand, and bundled context
-models are copied to `dist/languages/` for `loadBundledNgrams()`.
+models are copied to `dist/languages/` for `loadSuggestionContext()`.
 
 The bundle and bundled data are committed, so version tags are directly
 consumable through jsDelivr

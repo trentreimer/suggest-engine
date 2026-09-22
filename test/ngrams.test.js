@@ -152,7 +152,7 @@ test('context matches are promoted, then user words, then library order', async 
 
     engine.recordWord('bewilder');
     engine.recordWord('bewilder');
-    await engine.addNgramModel(modelFor(alphaBetween));
+    await engine.addContextModel(modelFor(alphaBetween));
 
     const suggestions = engine.suggest('be', 'alpha ');
 
@@ -164,7 +164,7 @@ test('context matches are promoted, then user words, then library order', async 
 test('context matches order by count and ignore non-matching prefixes', async () => {
     const engine = await fixtureEngine();
 
-    await engine.addNgramModel(modelFor(alphaBetween));
+    await engine.addContextModel(modelFor(alphaBetween));
 
     assert.deepEqual(engine.suggest('be', 'alpha ').map(s => s.text), ['between', 'better', 'become', 'bewilder']);
     assert.deepEqual(engine.suggest('g', 'alpha '), []);
@@ -177,7 +177,7 @@ const alphaTrigram = [{ a: 0, b: 3, successors: [{ id: 1, count: 9 }] }];
 test('trigram matches precede bigram-only matches', async () => {
     const engine = await fixtureEngine();
 
-    await engine.addNgramModel(modelFor([...alphaBetween, betweenBetter], words, 'en', alphaTrigram));
+    await engine.addContextModel(modelFor([...alphaBetween, betweenBetter], words, 'en', alphaTrigram));
 
     const suggestions = engine.suggest('be', 'alpha between ');
 
@@ -188,7 +188,7 @@ test('trigram matches precede bigram-only matches', async () => {
 test('without a trigram match the bigram context still orders suggestions', async () => {
     const engine = await fixtureEngine();
 
-    await engine.addNgramModel(modelFor([...alphaBetween, betweenBetter]));
+    await engine.addContextModel(modelFor([...alphaBetween, betweenBetter]));
 
     assert.deepEqual(engine.suggest('be', 'alpha between ').map(s => s.text), ['better', 'become', 'between', 'bewilder']);
     assert.deepEqual(engine.suggest('be', 'delta between ').map(s => s.text), ['better', 'become', 'between', 'bewilder']);
@@ -199,7 +199,7 @@ test('trigram matches, then bigram matches, then user words, then library', asyn
 
     engine.recordWord('bewilder');
     engine.recordWord('bewilder');
-    await engine.addNgramModel(modelFor([...alphaBetween, betweenBetter], words, 'en', alphaTrigram));
+    await engine.addContextModel(modelFor([...alphaBetween, betweenBetter], words, 'en', alphaTrigram));
 
     assert.deepEqual(engine.suggest('be', 'alpha between ').map(s => s.text), ['become', 'better', 'bewilder', 'between']);
     assert.deepEqual(engine.suggest('be', 'alpha between ').map(s => s.source), ['bundled', 'bundled', 'user-words', 'bundled']);
@@ -210,7 +210,7 @@ test('nextWords backs off from trigram to bigram and then user words', async () 
 
     engine.recordWord('bewilder');
     engine.recordWord('bewilder');
-    await engine.addNgramModel(modelFor([...alphaBetween, betweenBetter], words, 'en', alphaTrigram));
+    await engine.addContextModel(modelFor([...alphaBetween, betweenBetter], words, 'en', alphaTrigram));
 
     const next = engine.nextWords('alpha between');
 
@@ -221,7 +221,7 @@ test('nextWords backs off from trigram to bigram and then user words', async () 
 test('suggestAt uses the two preceding words for trigram context', async () => {
     const engine = await fixtureEngine();
 
-    await engine.addNgramModel(modelFor([...alphaBetween, betweenBetter], words, 'en', alphaTrigram));
+    await engine.addContextModel(modelFor([...alphaBetween, betweenBetter], words, 'en', alphaTrigram));
 
     assert.deepEqual(engine.suggestAt('alpha between be', 16).map(s => s.text), ['become', 'better', 'between', 'bewilder']);
     assert.deepEqual(engine.suggestAt('alpha between b', 15).map(s => s.text), ['become', 'better', 'between', 'bewilder']);
@@ -236,7 +236,7 @@ test('suggest without context is identical with and without a model', async () =
     withoutModel.recordWord('bewilder');
     withoutModel.recordWord('bewilder');
 
-    await withModel.addNgramModel(modelFor(alphaBetween));
+    await withModel.addContextModel(modelFor(alphaBetween));
 
     assert.deepEqual(withModel.suggest('be'), withoutModel.suggest('be'));
     assert.deepEqual(withModel.suggest('be').map(s => s.text), ['bewilder', 'become', 'better', 'between']);
@@ -250,7 +250,7 @@ test('a hash mismatch disables context ranking with one warning', async () => {
     console.warn = message => warnings.push(message);
 
     try {
-        await engine.addNgramModel(new NgramModel(encodeNgramModel({ language: 'en', vocabHash: 42, contexts: alphaBetween })));
+        await engine.addContextModel(new NgramModel(encodeNgramModel({ language: 'en', vocabHash: 42, contexts: alphaBetween })));
 
         assert.deepEqual(engine.suggest('be', 'alpha ').map(s => s.text), ['become', 'better', 'between', 'bewilder']);
         assert.deepEqual(engine.suggest('be', 'alpha ').map(s => s.text), ['become', 'better', 'between', 'bewilder']);
@@ -267,7 +267,7 @@ test('nextWords returns successors first, then user words fill remaining slots',
 
     engine.recordWord('bewilder');
     engine.recordWord('bewilder');
-    await engine.addNgramModel(modelFor(alphaBetween));
+    await engine.addContextModel(modelFor(alphaBetween));
 
     const next = engine.nextWords('alpha');
 
@@ -290,7 +290,7 @@ test('nextWords and suggest with context degrade to current behavior without a m
 test('suggestAt derives prefix and context from text and caret', async () => {
     const engine = await fixtureEngine();
 
-    await engine.addNgramModel(modelFor(alphaBetween));
+    await engine.addContextModel(modelFor(alphaBetween));
 
     assert.deepEqual(engine.suggestAt('alpha bet', 9).map(s => s.text), ['between', 'better']);
     assert.deepEqual(engine.suggestAt('see alpha bet', 13).map(s => s.text), ['between', 'better']);
@@ -299,16 +299,16 @@ test('suggestAt derives prefix and context from text and caret', async () => {
     assert.deepEqual(engine.suggestAt('', 0), []);
 });
 
-test('wordsBefore walks back over boundaries and clamps the index', async () => {
+test('previousWords walks back over boundaries and clamps the index', async () => {
     const engine = await fixtureEngine();
 
-    assert.deepEqual(engine.wordsBefore('one two three', 13, 2), ['three', 'two']);
-    assert.deepEqual(engine.wordsBefore('one two three', 8, 3), ['two', 'one']);
-    assert.deepEqual(engine.wordsBefore("aujourd'hui hier", 16, 1), ['hier']);
-    assert.deepEqual(engine.wordsBefore('hello', 99, 1), ['hello']);
-    assert.deepEqual(engine.wordsBefore('', 0, 1), []);
-    assert.deepEqual(engine.wordsBefore('hello', 3, 1), ['hel']);
-    assert.deepEqual(engine.wordsBefore('hello', 0, 1), []);
+    assert.deepEqual(engine.previousWords('one two three', 13, 2), ['three', 'two']);
+    assert.deepEqual(engine.previousWords('one two three', 8, 3), ['two', 'one']);
+    assert.deepEqual(engine.previousWords("aujourd'hui hier", 16, 1), ['hier']);
+    assert.deepEqual(engine.previousWords('hello', 99, 1), ['hello']);
+    assert.deepEqual(engine.previousWords('', 0, 1), []);
+    assert.deepEqual(engine.previousWords('hello', 3, 1), ['hel']);
+    assert.deepEqual(engine.previousWords('hello', 0, 1), []);
 });
 
 test('context ranking follows the active language', async () => {
@@ -317,13 +317,13 @@ test('context ranking follows the active language', async () => {
     const engine = new SuggestEngine({ language: 'en', userWords: true });
 
     await engine.addWordList('bundled', words);
-    await engine.addNgramModel(modelFor(alphaBetween, words, 'en'));
+    await engine.addContextModel(modelFor(alphaBetween, words, 'en'));
 
     assert.deepEqual(engine.suggest('be', 'alpha ').map(s => s.text), ['between', 'better', 'become', 'bewilder']);
 
     engine.setLanguage('ar');
     await engine.addWordList('bundled', words);
-    await engine.addNgramModel(modelFor(
+    await engine.addContextModel(modelFor(
         [{ id: 0, successors: [{ id: 2, count: 5 }] }],
         words,
         'ar'
@@ -335,32 +335,32 @@ test('context ranking follows the active language', async () => {
     assert.deepEqual(engine.suggest('be', 'alpha ').map(s => s.text), ['between', 'better', 'become', 'bewilder']);
 });
 
-test('addNgramModel accepts buffers and rejects unsupported sources', async () => {
+test('addContextModel accepts buffers and rejects unsupported sources', async () => {
     const engine = await fixtureEngine();
     const buffer = encodeNgramModel({ language: 'en', vocabHash: fnv1a(words.join('\n')), contexts: alphaBetween });
 
-    assert.equal(await engine.addNgramModel(buffer), true);
-    assert.equal(await engine.addNgramModel(new Uint8Array(buffer)), true);
-    await assert.rejects(() => engine.addNgramModel(42), TypeError);
+    assert.equal(await engine.addContextModel(buffer), true);
+    assert.equal(await engine.addContextModel(new Uint8Array(buffer)), true);
+    await assert.rejects(() => engine.addContextModel(42), TypeError);
 });
 
-test('addNgramModel fetches URL sources and surfaces HTTP failures', async () => {
+test('addContextModel fetches URL sources and surfaces HTTP failures', async () => {
     const engine = await fixtureEngine();
     const buffer = encodeNgramModel({ language: 'en', vocabHash: fnv1a(words.join('\n')), contexts: alphaBetween });
     const originalFetch = globalThis.fetch;
 
     try {
         globalThis.fetch = async url => ({ ok: true, arrayBuffer: async () => buffer });
-        assert.equal(await engine.addNgramModel('https://cdn.example/en.ngram.bin'), true);
+        assert.equal(await engine.addContextModel('https://cdn.example/en.ngram.bin'), true);
 
         globalThis.fetch = async () => ({ ok: false, status: 404 });
-        await assert.rejects(() => engine.addNgramModel('https://cdn.example/en.ngram.bin'), /Unable to fetch/);
+        await assert.rejects(() => engine.addContextModel('https://cdn.example/en.ngram.bin'), /Unable to fetch/);
     } finally {
         globalThis.fetch = originalFetch;
     }
 });
 
-test('loadBundledNgrams builds the versioned URL and handles missing data', async () => {
+test('loadSuggestionContext builds the versioned URL and handles missing data', async () => {
     const engine = await fixtureEngine();
     const buffer = encodeNgramModel({ language: 'en', vocabHash: fnv1a(words.join('\n')), contexts: alphaBetween });
     const originalFetch = globalThis.fetch;
@@ -373,12 +373,12 @@ test('loadBundledNgrams builds the versioned URL and handles missing data', asyn
             return { ok: true, arrayBuffer: async () => buffer };
         };
 
-        assert.equal(await engine.loadBundledNgrams('https://cdn.example/gh/lib@v0.3.0/languages'), true);
+        assert.equal(await engine.loadSuggestionContext('https://cdn.example/gh/lib@v0.3.0/languages'), true);
         assert.deepEqual(urls, ['https://cdn.example/gh/lib@v0.3.0/languages/en.ngram.bin']);
         assert.deepEqual(engine.suggest('be', 'alpha ').map(s => s.text), ['between', 'better', 'become', 'bewilder']);
 
         globalThis.fetch = async () => ({ ok: false, status: 404 });
-        assert.equal(await engine.loadBundledNgrams('https://cdn.example/languages/'), false);
+        assert.equal(await engine.loadSuggestionContext('https://cdn.example/languages/'), false);
     } finally {
         globalThis.fetch = originalFetch;
     }
@@ -387,7 +387,7 @@ test('loadBundledNgrams builds the versioned URL and handles missing data', asyn
 test('replacing the bundled word list invalidates a matching model', async () => {
     const engine = await fixtureEngine();
 
-    await engine.addNgramModel(modelFor(alphaBetween));
+    await engine.addContextModel(modelFor(alphaBetween));
     assert.deepEqual(engine.suggest('be', 'alpha ').map(s => s.text), ['between', 'better', 'become', 'bewilder']);
 
     await engine.addWordList('bundled', ['other', 'words']);

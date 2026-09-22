@@ -67,24 +67,38 @@ function escapeForCharacterClass(chars) {
     return chars.replace(/[\\\]\^-]/g, '\\$&');
 }
 
-const invalidTokenRegex = /[^\p{L}\p{M}\p{N}'\-]/u;
+// Connector candidates: format characters a language's orthography may use
+// inside words. Whether a language actually uses one is derived from its
+// corpus and shipped in languages/word-chars.js; hosts never configure this.
+const connectorCandidates = '\u200C\u200D';
 
-function tokenize(sentence, script) {
+function tokenize(sentence, script, extras = '') {
     const normalized = sentence.normalize('NFC').toLowerCase();
-    const tokenRegex = new RegExp(`[${scriptRanges[script]}\\p{M}${escapeForCharacterClass("'-")}]+`, 'gu');
+    const connectors = escapeForCharacterClass(`'-${extras}`);
+    const tokenRegex = new RegExp(`[${scriptRanges[script]}\\p{M}${connectors}]+`, 'gu');
+    const edgeTrim = new RegExp(`^[${connectors}]+|[${connectors}]+$`, 'gu');
+    const invalidToken = new RegExp(`[^\\p{L}\\p{M}\\p{N}${connectors}]`, 'u');
     const tokens = [];
 
     for (const match of normalized.matchAll(tokenRegex)) {
-        const token = match[0].replace(/^['\-]+|['\-]+$/g, '');
+        const token = match[0].replace(edgeTrim, '');
 
         if (token.length < 2) continue;
         // Script classes also match script-specific punctuation; keep tokens parseWordList preserves.
-        if (invalidTokenRegex.test(token)) continue;
+        if (invalidToken.test(token)) continue;
 
         tokens.push(token);
     }
 
     return tokens;
+}
+
+/**
+ * Connector characters a language's retained words actually use, restricted to
+ * the candidate set; shipped to runtime in languages/word-chars.js.
+ */
+function deriveWordChars(words, candidates = connectorCandidates) {
+    return [...new Set(words.join(''))].filter(ch => candidates.includes(ch)).join('');
 }
 
 function kataToHira(text) {
@@ -431,6 +445,49 @@ function regenerateManifest(exclude = []) {
     return writeIfChanged(join(bundledDir, 'index.js'), text);
 }
 
+function escapeStringLiteral(text) {
+    return [...text].map(ch => {
+        const point = ch.codePointAt(0);
+
+        return point > 0xFFFF ? `\\u{${point.toString(16)}}` : `\\u${point.toString(16).padStart(4, '0')}`;
+    }).join('');
+}
+
+/**
+ * Merges per-language connector characters ({ [code]: string | null }) into
+ * languages/word-chars.js — the static map the runtime tokenizes with. Codes
+ * without entries (or with null) tokenize with apostrophes and hyphens only.
+ */
+async function mergeWordChars(updates) {
+    const wordCharsPath = join(bundledDir, 'word-chars.js');
+    let map = {};
+
+    if (existsSync(wordCharsPath)) {
+        try {
+            map = (await import(pathToFileURL(wordCharsPath).href)).default ?? {};
+        } catch (err) {
+            map = {};
+        }
+    }
+
+    for (const [code, chars] of Object.entries(updates)) {
+        if (chars) map[code] = chars;
+        else delete map[code];
+    }
+
+    const ordered = {};
+
+    for (const code of manifestOrder) if (map[code]) ordered[code] = map[code];
+
+    for (const code of Object.keys(map)) if (!ordered[code] && map[code]) ordered[code] = map[code];
+
+    const entries = Object.entries(ordered)
+        .map(([code, chars]) => `    ${/^[a-z][a-z0-9-]*$/i.test(code) ? code : JSON.stringify(code)}: '${escapeStringLiteral(chars)}',`);
+    const text = 'export default ' + (entries.length ? '{\n' + entries.join('\n') + '\n};\n' : '{};\n');
+
+    return writeIfChanged(wordCharsPath, text);
+}
+
 function loadAttributionRecords() {
     if (!existsSync(attributionDir)) return [];
 
@@ -568,7 +625,9 @@ executed at runtime.
 ## Transformation
 
 Word lists: NFC normalization, lowercasing, token extraction (per-language
-script letters, combining marks, apostrophes and hyphens; minimum length 2),
+script letters, combining marks, apostrophes and hyphens, plus corpus-derived
+per-language connector characters such as ZWNJ/ZWJ, shipped in
+\`languages/word-chars.js\`; minimum length 2),
 frequency counting, profanity filtering (\`tools/profanity-filter.txt\`,
 project-owned and user-editable), frequency-descending sort with alphabetical
 tie-break, top ${config.topN} retained.
@@ -606,7 +665,7 @@ machine-assisted curation of the Arabic and Hindi lists.
     return writeIfChanged(join(libDir, 'ATTRIBUTION.md'), text);
 }
 
-function removeLanguages(codes) {
+async function removeLanguages(codes) {
     mkdirSync(bundledDir, { recursive: true });
     mkdirSync(attributionDir, { recursive: true });
 
@@ -623,6 +682,8 @@ function removeLanguages(codes) {
 
     regenerateManifest(codes);
     regenerateAttribution();
+
+    await mergeWordChars(Object.fromEntries(codes.map(code => [code, null])));
 
     console.log('\nBundled lists removed. Host-side cleanup left to you, if applicable:');
     console.log('  - languages/<code>/ folder (keyboards, translations, reference word list, ngrams.bin and its backup)');
@@ -1277,7 +1338,7 @@ function compareWords(a, b) {
     return a < b ? -1 : a > b ? 1 : 0;
 }
 
-async function countTrigrams(code, source, dumps, kept, pairCounts, vocabularySize, idByWord) {
+async function countTrigrams(code, source, dumps, kept, pairCounts, vocabularySize, idByWord, extras) {
     const trigramTopK = source.trigramTopK ?? config.trigramTopK ?? 4;
     const trigramMinPairCount = source.trigramMinPairCount ?? config.trigramMinPairCount ?? 3;
     const trigramMinCount = source.trigramMinCount ?? config.trigramMinCount ?? 3;
@@ -1304,7 +1365,7 @@ async function countTrigrams(code, source, dumps, kept, pairCounts, vocabularySi
         let previous = -1;
         let previous2 = -1;
 
-        for (const token of tokenize(text, source.script)) {
+        for (const token of tokenize(text, source.script, extras)) {
             const id = idByWord.get(token);
 
             if (id === undefined) {
@@ -1355,7 +1416,7 @@ async function countTrigrams(code, source, dumps, kept, pairCounts, vocabularySi
     return contexts;
 }
 
-async function buildNgrams(code, source, dumps, kept) {
+async function buildNgrams(code, source, dumps, kept, extras) {
     const vocabularySize = kept.length;
     const topK = source.ngramTopK ?? config.ngramTopK ?? 8;
     const minCount = source.ngramMinCount ?? config.ngramMinCount ?? 2;
@@ -1370,7 +1431,7 @@ async function buildNgrams(code, source, dumps, kept) {
     await forEachText(dumps, text => {
         let previous = -1;
 
-        for (const token of tokenize(text, source.script)) {
+        for (const token of tokenize(text, source.script, extras)) {
             const id = idByWord.get(token);
 
             if (id === undefined) {
@@ -1387,7 +1448,7 @@ async function buildNgrams(code, source, dumps, kept) {
         }
     });
 
-    const trigramContexts = await countTrigrams(code, source, dumps, kept, pairCounts, vocabularySize, idByWord);
+    const trigramContexts = await countTrigrams(code, source, dumps, kept, pairCounts, vocabularySize, idByWord, extras);
     const byContext = new Map();
 
     for (const [key, count] of pairCounts) {
@@ -1443,12 +1504,13 @@ async function buildNgrams(code, source, dumps, kept) {
 async function buildWords(code, source, dumps, profanity, stats) {
     const licenses = [...new Set(dumps.map(dump => dump.license))].join(', ');
     const sentences = dumps.reduce((total, dump) => total + dump.sentences, 0);
+    const candidates = source.wordChars ?? connectorCandidates;
 
     console.log(`[${code}] counting tokens (${source.script}, ${licenses})`);
     const counts = new Map();
 
     await forEachText(dumps, text => {
-        for (const token of tokenize(text, source.script)) {
+        for (const token of tokenize(text, source.script, candidates)) {
             counts.set(token, (counts.get(token) || 0) + 1);
         }
     });
@@ -1461,7 +1523,9 @@ async function buildWords(code, source, dumps, profanity, stats) {
     const filtered = entries.filter(([word]) => !banned.has(word));
     const kept = filtered.slice(0, source.topN ?? config.topN);
     const text = kept.map(([word]) => word).join('\n') + '\n';
-    const roundTripped = parseWordList(text);
+    // Connector characters the retained words actually use; only these ship to runtime.
+    const wordChars = source.wordChars ?? deriveWordChars(kept.map(([word]) => word), candidates);
+    const roundTripped = parseWordList(text, wordChars);
 
     if (roundTripped.length !== kept.length || roundTripped.some((word, i) => word !== kept[i][0])) {
         const parsed = new Set(roundTripped);
@@ -1470,17 +1534,17 @@ async function buildWords(code, source, dumps, profanity, stats) {
         throw new Error(`[${code}] word list does not survive parseWordList (${offending.length} lost): ${offending.slice(0, 5).join(', ')}`);
     }
 
-    console.log(`[${code}] ${sentences} sentences, ${counts.size} unique tokens, ${kept.length} kept (${entries.length - filtered.length} filtered)`);
+    console.log(`[${code}] ${sentences} sentences, ${counts.size} unique tokens, ${kept.length} kept (${entries.length - filtered.length} filtered)` + (wordChars ? `, connector chars ${[...wordChars].map(ch => `U+${ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`).join(' ')}` : ''));
 
     mkdirSync(join(hostLanguagesDir, code), { recursive: true });
 
-    const ngrams = await buildNgrams(code, source, dumps, kept);
+    const ngrams = await buildNgrams(code, source, dumps, kept, candidates);
     const referencePath = join(hostLanguagesDir, code, 'autocomplete.txt');
 
     writeWithBackup(referencePath, join(hostLanguagesDir, code, 'autocomplete-previous.txt'), text);
     writeIfChanged(join(bundledDir, `${code}.js`), `export default \`${escapeTemplateLiteral(text)}\`;\n`);
 
-    stats.push({ code, mode: 'words', dumps, tokens: counts.size, kept: kept.length, ngrams });
+    stats.push({ code, mode: 'words', dumps, tokens: counts.size, kept: kept.length, ngrams, wordChars });
 }
 
 async function buildZhComposition(source, dump, profanity, stats) {
@@ -1557,7 +1621,7 @@ async function main() {
     }
 
     if (removing) {
-        removeLanguages(codes);
+        await removeLanguages(codes);
         return;
     }
 
@@ -1588,6 +1652,8 @@ async function main() {
 
     const changedRecords = writeAttributionRecords(stats);
 
+    await mergeWordChars(Object.fromEntries(stats.filter(stat => stat.mode === 'words').map(stat => [stat.code, stat.wordChars])));
+
     regenerateManifest();
     regenerateAttribution();
 
@@ -1607,4 +1673,4 @@ if (isMain) {
     });
 }
 
-export { cleanHpltText, decodeText, extractText, findArchiveEntry, findCacheFiles, forEachText, languageSources, orderHpltShards, readHpltDocuments, recordSources, resolveCommonVoiceDump, resolveDumps, resolveHpltDump, sourceCells };
+export { cleanHpltText, connectorCandidates, decodeText, deriveWordChars, extractText, findArchiveEntry, findCacheFiles, forEachText, languageSources, orderHpltShards, readHpltDocuments, recordSources, resolveCommonVoiceDump, resolveDumps, resolveHpltDump, sourceCells, tokenize };

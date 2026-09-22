@@ -1,16 +1,47 @@
+// src/word-lists.js
+function parseWordList(text, extraChars = "") {
+  const words = [];
+  if (typeof text !== "string") return words;
+  const truncation = new RegExp(`[^\\p{L}\\p{M}\\p{N}'\\-${escapeForCharacterClass(extraChars)}].*$`, "u");
+  for (const line of text.split("\n")) {
+    const word = line.trim().replaceAll("\u02BC", "'").replaceAll("\u2019", "'").replace(truncation, "");
+    if (word.length > 1) words.push(word);
+  }
+  return words;
+}
+async function resolveWordList(source, extraChars = "") {
+  if (Array.isArray(source)) return dedupe(parseWordList(source.join("\n"), extraChars));
+  if (source && typeof source === "object" && typeof source.text === "string") {
+    return dedupe(parseWordList(source.text, extraChars));
+  }
+  if (typeof source === "string") {
+    const response = await fetch(source);
+    if (!response.ok) throw new Error(`Unable to fetch ${source}`);
+    return dedupe(parseWordList(await response.text(), extraChars));
+  }
+  throw new TypeError("Unsupported word list source");
+}
+function escapeForCharacterClass(chars) {
+  return chars.replace(/[\\\]\^-]/g, "\\$&");
+}
+function dedupe(words) {
+  return [...new Set(words)];
+}
+
 // src/user-words.js
 var UserWords = class {
-  constructor({ storagePrefix = "suggest-engine", promoteThreshold = 2, maxWords = 300 } = {}) {
+  constructor({ storagePrefix = "suggest-engine", recordAfter = 2, maxWords = 300 } = {}) {
     this.storageKey = `${storagePrefix}:user-words`;
-    this.promoteThreshold = promoteThreshold;
+    this.recordAfter = recordAfter;
     this.maxWords = maxWords;
-    this.validWordRegex = /^[\p{L}\p{M}'\-]+$/u;
     this.language = "en";
     this.data = null;
     this.storageAvailable = true;
+    this.setLanguage(this.language);
   }
-  setLanguage(language) {
+  setLanguage(language, extraChars = "") {
     this.language = String(language || "en").toLowerCase();
+    this.validWordRegex = new RegExp(`^[\\p{L}\\p{M}'\\-${escapeForCharacterClass(extraChars)}]+$`, "u");
   }
   ensureLoaded() {
     if (this.data) return;
@@ -63,8 +94,8 @@ var UserWords = class {
     if (!this.record(word)) return false;
     const bucket = this.bucket();
     const entry = bucket[word.trim().toLowerCase()];
-    if (entry && entry.count < this.promoteThreshold) {
-      entry.count = this.promoteThreshold;
+    if (entry && entry.count < this.recordAfter) {
+      entry.count = this.recordAfter;
       entry.last = Date.now();
       this.write();
     }
@@ -78,7 +109,7 @@ var UserWords = class {
     const matches = [];
     for (const key of Object.keys(bucket)) {
       const entry = bucket[key];
-      if (entry.count < this.promoteThreshold) continue;
+      if (entry.count < this.recordAfter) continue;
       if (key.length <= wanted.length) continue;
       if (!key.startsWith(wanted)) continue;
       matches.push(entry);
@@ -124,32 +155,6 @@ var UserWords = class {
     }
   }
 };
-
-// src/word-lists.js
-function parseWordList(text) {
-  const words = [];
-  if (typeof text !== "string") return words;
-  for (const line of text.split("\n")) {
-    const word = line.trim().replaceAll("\u02BC", "'").replaceAll("\u2019", "'").replace(/[^\p{L}\p{M}\p{N}'\-].*$/u, "");
-    if (word.length > 1) words.push(word);
-  }
-  return words;
-}
-async function resolveWordList(source) {
-  if (Array.isArray(source)) return dedupe(parseWordList(source.join("\n")));
-  if (source && typeof source === "object" && typeof source.text === "string") {
-    return dedupe(parseWordList(source.text));
-  }
-  if (typeof source === "string") {
-    const response = await fetch(source);
-    if (!response.ok) throw new Error(`Unable to fetch ${source}`);
-    return dedupe(parseWordList(await response.text()));
-  }
-  throw new TypeError("Unsupported word list source");
-}
-function dedupe(words) {
-  return [...new Set(words)];
-}
 
 // src/ngrams.js
 var NGRAM_MAGIC = 1196311891;
@@ -295,10 +300,16 @@ var NgramModel = class {
   }
 };
 
+// languages/word-chars.js
+var word_chars_default = {
+  fa: "\u200C",
+  mr: "\u200D"
+};
+
 // src/engine.js
 var userWordsDefaults = {
   storagePrefix: "suggest-engine",
-  promoteThreshold: 2,
+  recordAfter: 2,
   maxWords: 300
 };
 function normalizeUserWords(option) {
@@ -306,12 +317,15 @@ function normalizeUserWords(option) {
   const provided = option === true ? {} : option;
   return {
     storagePrefix: provided.storagePrefix ?? userWordsDefaults.storagePrefix,
-    promoteThreshold: provided.promoteThreshold ?? userWordsDefaults.promoteThreshold,
+    recordAfter: provided.recordAfter ?? userWordsDefaults.recordAfter,
     maxWords: provided.maxWords ?? userWordsDefaults.maxWords
   };
 }
-function escapeForCharacterClass(chars) {
-  return chars.replace(/[\\\]\^-]/g, "\\$&");
+function wordCharsFor(language) {
+  return language && word_chars_default[language] || "";
+}
+function boundaryRegexFor(language) {
+  return new RegExp(`[^\\p{L}\\p{M}'\\-${escapeForCharacterClass(wordCharsFor(language))}]`, "u");
 }
 function buildSource(words) {
   const lowered = new Array(words.length);
@@ -337,44 +351,49 @@ function defaultNgramBase() {
 }
 var SuggestEngine = class {
   constructor(options = {}) {
-    this.language = String(options.language ?? "en").toLowerCase();
+    this.language = options.language ? String(options.language).trim().toLowerCase() : null;
     this.maxSuggestions = options.maxSuggestions ?? 5;
-    this.wordBoundaryChars = options.wordBoundaryChars ?? "'-";
-    this.boundaryRegex = new RegExp(`[^\\p{L}\\p{M}${escapeForCharacterClass(this.wordBoundaryChars)}]`, "u");
+    this.boundaryRegex = boundaryRegexFor(this.language);
     const userWordsOptions = normalizeUserWords(options.userWords);
     this.userWordsOptions = userWordsOptions;
     this.userWordsStore = userWordsOptions ? new UserWords(userWordsOptions) : null;
-    this.userWordsStore?.setLanguage(this.language);
+    if (this.language) this.userWordsStore?.setLanguage(this.language, wordCharsFor(this.language));
     this.sourcesByLanguage = {};
     this.ngramsByLanguage = {};
     this.ngramIndexes = {};
     this.bundledManifest = null;
   }
   setLanguage(language) {
-    this.language = String(language || "en").toLowerCase();
-    this.userWordsStore?.setLanguage(this.language);
+    if (typeof language !== "string" || !language.trim()) {
+      throw new TypeError("setLanguage requires a language code");
+    }
+    this.language = language.trim().toLowerCase();
+    this.boundaryRegex = boundaryRegexFor(this.language);
+    this.userWordsStore?.setLanguage(this.language, wordCharsFor(this.language));
   }
   async addWordList(name, source) {
-    const words = await resolveWordList(source);
+    if (!this.language) throw new Error("Set a language with setLanguage() before adding word lists");
+    const words = await resolveWordList(source, wordCharsFor(this.language));
     if (!this.sourcesByLanguage[this.language]) this.sourcesByLanguage[this.language] = {};
     this.sourcesByLanguage[this.language][name] = buildSource(words);
     delete this.ngramIndexes[this.language];
   }
-  async loadBundledWordList(lang) {
+  async loadWordList(lang) {
     const language = String(lang || this.language).toLowerCase();
     if (!/^[a-z]{2,3}(-[a-z0-9]+)*$/.test(language)) return false;
     if (!this.bundledManifest) {
-      this.bundledManifest = (await import("./chunks/languages-PCR5ARFH.js")).default;
+      this.bundledManifest = (await import("./chunks/languages-OM77UAUS.js")).default;
     }
     const loader = this.bundledManifest[language];
     if (!loader) return false;
     const module = await loader();
     if (!this.sourcesByLanguage[language]) this.sourcesByLanguage[language] = {};
-    this.sourcesByLanguage[language].bundled = buildSource(parseWordList(module.default));
+    this.sourcesByLanguage[language].bundled = buildSource(parseWordList(module.default, wordCharsFor(language)));
     delete this.ngramIndexes[language];
     return true;
   }
-  async addNgramModel(source) {
+  async addContextModel(source) {
+    if (!this.language) throw new Error("Set a language with setLanguage() before adding a context model");
     let model = source;
     if (typeof source === "string") {
       const response = await fetch(source);
@@ -383,16 +402,16 @@ var SuggestEngine = class {
     } else if (source instanceof ArrayBuffer || ArrayBuffer.isView(source)) {
       model = new NgramModel(source);
     }
-    if (!(model instanceof NgramModel)) throw new TypeError("Unsupported ngram model source");
+    if (!(model instanceof NgramModel)) throw new TypeError("Unsupported context model source");
     this.ngramsByLanguage[this.language] = model;
     delete this.ngramIndexes[this.language];
     return true;
   }
-  async loadBundledNgrams(baseUrl) {
+  async loadSuggestionContext(baseUrl) {
     const language = this.language;
     if (!/^[a-z]{2,3}(-[a-z0-9]+)*$/.test(language)) return false;
     const base = baseUrl ?? defaultNgramBase();
-    if (!base) throw new Error("loadBundledNgrams requires a baseUrl (the URL of the languages/ directory)");
+    if (!base) throw new Error("loadSuggestionContext requires a baseUrl (the URL of the languages/ directory)");
     const prefix = String(base).endsWith("/") ? base : `${base}/`;
     const response = await fetch(`${prefix}${language}.ngram.bin`);
     if (!response.ok) return false;
@@ -400,7 +419,7 @@ var SuggestEngine = class {
     delete this.ngramIndexes[language];
     return true;
   }
-  wordBefore(text, index) {
+  wordAt(text, index) {
     if (typeof text !== "string") return "";
     const end = Math.min(index ?? text.length, text.length);
     let start = 0;
@@ -412,7 +431,7 @@ var SuggestEngine = class {
     }
     return text.substring(start, end);
   }
-  wordsBefore(text, index, count = 2) {
+  previousWords(text, index, count = 2) {
     if (typeof text !== "string") return [];
     const words = [];
     let cursor = Math.min(index ?? text.length, text.length);
@@ -426,19 +445,20 @@ var SuggestEngine = class {
     return words;
   }
   suggest(word, context) {
-    const previousWords = typeof context === "string" && context.length ? this.wordsBefore(context, context.length, 2) : [];
+    const previousWords = typeof context === "string" && context.length ? this.previousWords(context, context.length, 2) : [];
     return this.suggestInternal(word, previousWords);
   }
   suggestAt(text, caret) {
-    const word = this.wordBefore(text, caret);
+    const word = this.wordAt(text, caret);
     const end = Math.min(caret ?? text.length, text.length) - word.length;
-    return this.suggestInternal(word, this.wordsBefore(text, end, 2));
+    return this.suggestInternal(word, this.previousWords(text, end, 2));
   }
   nextWords(context) {
-    const previousWords = typeof context === "string" && context.length ? this.wordsBefore(context, context.length, 2) : [];
+    const previousWords = typeof context === "string" && context.length ? this.previousWords(context, context.length, 2) : [];
     return this.nextWordsInternal(previousWords);
   }
   suggestInternal(word, previousWords) {
+    if (!this.language) return [];
     if (typeof word !== "string" || word.length === 0) return [];
     const wanted = word.toLowerCase();
     const limit = this.maxSuggestions;
@@ -471,6 +491,7 @@ var SuggestEngine = class {
     return results.slice(0, limit);
   }
   nextWordsInternal(previousWords) {
+    if (!this.language) return [];
     const limit = this.maxSuggestions;
     const seen = /* @__PURE__ */ new Set();
     const results = [];
@@ -512,7 +533,7 @@ var SuggestEngine = class {
     if (!model || !source) return null;
     const hash = fnv1a(source.words.join("\n"));
     if (hash !== model.vocabHash) {
-      console.warn(`suggest-engine: ngram model for "${language}" does not match the bundled word list; context ranking disabled`);
+      console.warn(`suggest-engine: context model for "${language}" does not match the bundled word list; context ranking disabled`);
       this.ngramIndexes[language] = null;
       return null;
     }
@@ -549,27 +570,34 @@ var SuggestEngine = class {
     return matches;
   }
   recordWord(word) {
+    if (!this.language) return false;
     return this.userWordsStore ? this.userWordsStore.record(word) : false;
   }
   addWord(word) {
+    if (!this.language) return false;
     return this.userWordsStore ? this.userWordsStore.add(word) : false;
   }
   get userWordsEnabled() {
     return this.userWordsStore !== null;
   }
   userWords() {
-    return this.userWordsStore ? this.userWordsStore.list() : [];
+    return this.userWordsStore && this.language ? this.userWordsStore.list() : [];
   }
-  removeUserWord(lower) {
-    return this.userWordsStore ? this.userWordsStore.remove(lower) : false;
+  removeWord(word) {
+    if (!this.userWordsStore || !this.language || typeof word !== "string") return false;
+    return this.userWordsStore.remove(word.trim().toLowerCase());
   }
   clearUserWords() {
-    if (this.userWordsStore) this.userWordsStore.clear();
+    if (this.userWordsStore && this.language) this.userWordsStore.clear();
   }
-  enableUserWords() {
-    if (this.userWordsStore || !this.userWordsOptions) return;
-    this.userWordsStore = new UserWords(this.userWordsOptions);
-    this.userWordsStore.setLanguage(this.language);
+  enableUserWords(options) {
+    if (this.userWordsStore) return;
+    const source = options !== void 0 ? options : this.userWordsOptions ?? true;
+    const normalized = normalizeUserWords(source);
+    if (!normalized) return;
+    this.userWordsOptions = normalized;
+    this.userWordsStore = new UserWords(normalized);
+    if (this.language) this.userWordsStore.setLanguage(this.language);
   }
   disableUserWords() {
     this.userWordsStore?.destroy();

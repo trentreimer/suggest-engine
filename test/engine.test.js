@@ -35,7 +35,7 @@ test('userWords omitted keeps the component inert with zero storage access', () 
     assert.equal(engine.recordWord('Sarah'), false);
     assert.equal(engine.addWord('Sarah'), false);
     assert.deepEqual(engine.userWords(), []);
-    assert.equal(engine.removeUserWord('sarah'), false);
+    assert.equal(engine.removeWord('sarah'), false);
     engine.clearUserWords();
     assert.equal(storage.calls, 0);
 });
@@ -112,6 +112,22 @@ test('suggest dedupes case-insensitively and shows dictionary casing', async () 
     assert.equal(suggestions[0].insertSuffix, 'rah');
 });
 
+test('removeWord removes case-insensitively, symmetric with addWord', async () => {
+    const storage = mockStorage();
+    globalThis.localStorage = storage;
+
+    const engine = new SuggestEngine({ language: 'en', userWords: true });
+    await engine.addWordList('main', ['sable']);
+
+    engine.recordWord('Sarah');
+    engine.recordWord('Sarah');
+    assert.deepEqual(engine.suggest('sa').map(s => s.text), ['Sarah', 'sable']);
+
+    assert.equal(engine.removeWord('SARAH'), true);
+    assert.deepEqual(engine.suggest('sa').map(s => s.text), ['sable']);
+    assert.equal(engine.removeWord('sarah'), false);
+});
+
 test('suggest caps results at maxSuggestions', async () => {
     const storage = mockStorage();
     globalThis.localStorage = storage;
@@ -122,24 +138,45 @@ test('suggest caps results at maxSuggestions', async () => {
     assert.equal(engine.suggest('s').length, 3);
 });
 
-test('wordBefore respects apostrophes, hyphens and marks', () => {
+test('wordAt respects apostrophes, hyphens and marks', () => {
     const engine = new SuggestEngine();
 
-    assert.equal(engine.wordBefore("aujourd'hui", 11), "aujourd'hui");
-    assert.equal(engine.wordBefore('peut-être', 9), 'peut-être');
-    assert.equal(engine.wordBefore('hello world', 5), 'hello');
-    assert.equal(engine.wordBefore('hello world', 6), '');
-    assert.equal(engine.wordBefore('hello', 5), 'hello');
-    assert.equal(engine.wordBefore('', 0), '');
-    assert.equal(engine.wordBefore('कौन-सा', 6), 'कौन-सा');
+    assert.equal(engine.wordAt("aujourd'hui", 11), "aujourd'hui");
+    assert.equal(engine.wordAt('peut-être', 9), 'peut-être');
+    assert.equal(engine.wordAt('hello world', 5), 'hello');
+    assert.equal(engine.wordAt('hello world', 6), '');
+    assert.equal(engine.wordAt('hello', 5), 'hello');
+    assert.equal(engine.wordAt('', 0), '');
+    assert.equal(engine.wordAt('कौन-सा', 6), 'कौन-सा');
 });
 
-test('wordBefore clamps the index and supports custom boundary chars', () => {
-    const engine = new SuggestEngine({ wordBoundaryChars: "'-_" });
+test('wordAt clamps the index and splits on non-word punctuation', () => {
+    const engine = new SuggestEngine();
 
-    assert.equal(engine.wordBefore('a_b', 3), 'a_b');
-    assert.equal(engine.wordBefore('hello', 99), 'hello');
-    assert.equal(engine.wordBefore('a-b', 3), 'a-b');
+    assert.equal(engine.wordAt('a_b', 3), 'b');
+    assert.equal(engine.wordAt('hello', 99), 'hello');
+    assert.equal(engine.wordAt('a-b', 3), 'a-b');
+});
+
+test('word characters are language-owned', async () => {
+    const storage = mockStorage();
+    globalThis.localStorage = storage;
+
+    const engine = new SuggestEngine({ language: 'fa', userWords: true });
+    await engine.addWordList('main', ['می\u200cروم', 'می\u200cگذرم', 'است']);
+
+    assert.equal(engine.wordAt('می\u200cروم', 6), 'می\u200cروم');
+    assert.deepEqual(engine.previousWords('است می\u200cروم', 11, 2), ['می\u200cروم', 'است']);
+    assert.deepEqual(engine.suggest('می\u200c').map(s => s.text), ['می\u200cروم', 'می\u200cگذرم']);
+    assert.equal(engine.recordWord('می\u200cگذرم'), true);
+
+    engine.setLanguage('en');
+    assert.equal(engine.wordAt('می\u200cروم', 6), 'روم');
+    assert.equal(engine.recordWord('می\u200cروم'), false);
+    assert.deepEqual(engine.suggest('می\u200c'), []);
+
+    engine.setLanguage('fa');
+    assert.deepEqual(engine.suggest('می\u200c').map(s => s.text), ['می\u200cروم', 'می\u200cگذرم']);
 });
 
 test('setLanguage switches source sets and user buckets', async () => {
@@ -187,7 +224,7 @@ test('bundled word lists load, rank by frequency, and skip missing languages', a
     globalThis.localStorage = storage;
 
     const engine = new SuggestEngine({ language: 'en', maxSuggestions: 10 });
-    assert.equal(await engine.loadBundledWordList(), true);
+    assert.equal(await engine.loadWordList(), true);
 
     const mSuggestions = engine.suggest('m').map(s => s.text);
     assert.ok(mSuggestions.includes('my'), "'my' should be suggested for 'm'");
@@ -198,35 +235,35 @@ test('bundled word lists load, rank by frequency, and skip missing languages', a
     assert.equal(engine.suggest('th')[0].text, 'the');
 
     engine.setLanguage('ar');
-    assert.equal(await engine.loadBundledWordList(), true);
+    assert.equal(await engine.loadWordList(), true);
     assert.equal(engine.suggest('ف')[0].text, 'في');
 
     engine.setLanguage('sw');
-    assert.equal(await engine.loadBundledWordList(), true);
+    assert.equal(await engine.loadWordList(), true);
     assert.equal(engine.suggest('kw')[0].text, 'kwa');
 
     engine.setLanguage('pcm');
-    assert.equal(await engine.loadBundledWordList(), true);
+    assert.equal(await engine.loadWordList(), true);
     assert.equal(engine.suggest('we')[0].text, 'wey');
 
     engine.setLanguage('it');
-    assert.equal(await engine.loadBundledWordList(), true);
+    assert.equal(await engine.loadWordList(), true);
     assert.equal(engine.suggest('ch')[0].text, 'che');
 
     engine.setLanguage('ko');
-    assert.equal(await engine.loadBundledWordList(), true);
+    assert.equal(await engine.loadWordList(), true);
     assert.equal(engine.suggest('그')[0].text, '그는');
 
     engine.setLanguage('am');
-    assert.equal(await engine.loadBundledWordList(), true);
+    assert.equal(await engine.loadWordList(), true);
     assert.equal(engine.suggest('እ')[0].text, 'እና');
 
     engine.setLanguage('gu');
-    assert.equal(await engine.loadBundledWordList(), true);
+    assert.equal(await engine.loadWordList(), true);
     assert.equal(engine.suggest('અ')[0].text, 'અને');
 
-    assert.equal(await engine.loadBundledWordList('zh'), false);
-    assert.equal(await engine.loadBundledWordList('../escape'), false);
+    assert.equal(await engine.loadWordList('zh'), false);
+    assert.equal(await engine.loadWordList('../escape'), false);
 });
 
 test('earlier-registered sources rank ahead of bundled data', async () => {
@@ -235,7 +272,7 @@ test('earlier-registered sources rank ahead of bundled data', async () => {
 
     const engine = new SuggestEngine({ language: 'en' });
     await engine.addWordList('custom', ['mica']);
-    await engine.loadBundledWordList();
+    await engine.loadWordList();
 
     const first = engine.suggest('mi')[0];
     assert.equal(first.text, 'mica');
@@ -265,7 +302,7 @@ test('disableUserWords wipes storage across languages and stops learning', async
     assert.equal(engine.recordWord('sable'), false);
     assert.equal(engine.addWord('sable'), false);
     assert.deepEqual(engine.suggest('sa').map(s => s.text), ['sable', 'sachet']);
-    assert.equal(engine.removeUserWord('sable'), false);
+    assert.equal(engine.removeWord('sable'), false);
     assert.equal(storage.getItem('ctt:user-words'), null);
 });
 
@@ -333,4 +370,106 @@ test('enable/disable are no-ops when already in that state', async () => {
     storage.calls = 0;
     disabled.disableUserWords();
     assert.equal(storage.calls, 0);
+});
+
+test('an engine without a language is inert until setLanguage', async () => {
+    const storage = mockStorage();
+    globalThis.localStorage = storage;
+
+    const engine = new SuggestEngine({ userWords: true });
+    assert.equal(engine.language, null);
+
+    assert.deepEqual(engine.suggest('sa'), []);
+    assert.deepEqual(engine.suggestAt('Hello Sa', 8), []);
+    assert.deepEqual(engine.nextWords('Hello'), []);
+    assert.equal(engine.recordWord('Sarah'), false);
+    assert.equal(engine.addWord('Sarah'), false);
+    assert.deepEqual(engine.userWords(), []);
+    assert.equal(engine.removeWord('Sarah'), false);
+    engine.clearUserWords();
+    assert.equal(storage.calls, 0);
+    assert.equal(await engine.loadWordList(), false);
+
+    await assert.rejects(() => engine.addWordList('main', ['sable']), /setLanguage/);
+    await assert.rejects(() => engine.addContextModel(new ArrayBuffer(0)), /setLanguage/);
+    assert.throws(() => engine.setLanguage(), TypeError);
+    assert.throws(() => engine.setLanguage('  '), TypeError);
+
+    engine.setLanguage('EN');
+    assert.equal(engine.language, 'en');
+    await engine.addWordList('main', ['sable', 'sachet']);
+    assert.deepEqual(engine.suggest('sa').map(s => s.text), ['sable', 'sachet']);
+    assert.equal(engine.recordWord('Sarah'), true);
+});
+
+test('enableUserWords on a never-configured engine enables with defaults', () => {
+    const storage = mockStorage();
+    globalThis.localStorage = storage;
+
+    const engine = new SuggestEngine({ language: 'en' });
+    engine.enableUserWords();
+    assert.equal(engine.userWordsEnabled, true);
+
+    engine.recordWord('solo');
+    engine.recordWord('solo');
+    assert.deepEqual(engine.suggest('so').map(s => s.text), ['solo']);
+    assert.ok(storage.getItem('suggest-engine:user-words'));
+});
+
+test('enableUserWords accepts the constructor userWords option shapes', () => {
+    const storage = mockStorage();
+    globalThis.localStorage = storage;
+
+    const engine = new SuggestEngine({ language: 'en' });
+
+    engine.enableUserWords({ storagePrefix: 'ctt' });
+    engine.recordWord('solo');
+    assert.ok(storage.getItem('ctt:user-words'));
+
+    engine.disableUserWords();
+
+    engine.enableUserWords(false);
+    assert.equal(engine.userWordsEnabled, false);
+
+    engine.enableUserWords(null);
+    assert.equal(engine.userWordsEnabled, false);
+
+    engine.enableUserWords(true);
+    assert.equal(engine.userWordsEnabled, true);
+    engine.recordWord('solo');
+    engine.recordWord('solo');
+    assert.ok(storage.getItem('suggest-engine:user-words'));
+});
+
+test('enableUserWords is a no-op when already enabled, even with options', () => {
+    const storage = mockStorage();
+    globalThis.localStorage = storage;
+
+    const engine = new SuggestEngine({ language: 'en', userWords: { storagePrefix: 'ctt' } });
+    engine.recordWord('sam');
+
+    engine.enableUserWords(true);
+    assert.ok(storage.getItem('ctt:user-words'));
+    assert.equal(storage.getItem('suggest-engine:user-words'), null);
+});
+
+test('enableUserWords options replace stored config for later cycles', () => {
+    const storage = mockStorage();
+    globalThis.localStorage = storage;
+
+    const engine = new SuggestEngine({ language: 'en', userWords: { storagePrefix: 'ctt' } });
+    engine.disableUserWords();
+
+    engine.enableUserWords({ storagePrefix: 'other' });
+    engine.recordWord('solo');
+    engine.recordWord('solo');
+    assert.ok(storage.getItem('other:user-words'));
+
+    engine.disableUserWords();
+
+    engine.enableUserWords();
+    engine.recordWord('solo');
+    engine.recordWord('solo');
+    assert.ok(storage.getItem('other:user-words'));
+    assert.equal(storage.getItem('ctt:user-words'), null);
 });
