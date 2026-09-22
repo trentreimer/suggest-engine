@@ -371,6 +371,31 @@ engine.compositionReset();
   `compositionSuggestions(context?, limit?)` exposes the ranking for hosts
   that render candidates themselves.
 
+### Korean input
+
+Korean (`ko`) is a word-list language, but 2-beolsik keyboards type decomposed
+jamo (`ㅎ`, `ㅏ`, `ㄴ`) while real text — and the bundled word list — uses
+composed syllable blocks (`한`). The engine exports two pure helpers for hosts
+to apply to editor text, the same way `voiceKanaChar` handles dakuten:
+
+```js
+import { composeJamo, backspaceHangul } from 'suggest-engine';
+
+composeJamo('ㅎㅏㄴ');          // → '한'
+composeJamo('한ㅏ');            // → '하나' (a vowel moves the final consonant)
+backspaceHangul('한');          // → '하'
+backspaceHangul('하');          // → 'ㅎ'
+backspaceHangul('없');          // → '업'
+backspaceHangul('abc');         // → null (nothing Hangul to step back)
+```
+
+A host composes the trailing Hangul run as the user types, so the document
+holds proper syllable blocks and `suggestAt` matches the bundled list with no
+further configuration. `backspaceHangul` steps back one composition state
+(final, then medial, then the jamo itself), matching Korean IME behaviour;
+`null` means the run does not end in Hangul and the host should delete a
+character instead.
+
 ### Server-side
 
 Browsers (`<script type="module">`) and Deno can import the CDN URL directly;

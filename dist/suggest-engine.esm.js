@@ -933,10 +933,186 @@ var SuggestEngine = class {
     this.userWordsStore = null;
   }
 };
+
+// src/jamo.js
+var CHO = ["\u3131", "\u3132", "\u3134", "\u3137", "\u3138", "\u3139", "\u3141", "\u3142", "\u3143", "\u3145", "\u3146", "\u3147", "\u3148", "\u3149", "\u314A", "\u314B", "\u314C", "\u314D", "\u314E"];
+var JUNG = ["\u314F", "\u3150", "\u3151", "\u3152", "\u3153", "\u3154", "\u3155", "\u3156", "\u3157", "\u3158", "\u3159", "\u315A", "\u315B", "\u315C", "\u315D", "\u315E", "\u315F", "\u3160", "\u3161", "\u3162", "\u3163"];
+var JONG = ["", "\u3131", "\u3132", "\u3133", "\u3134", "\u3135", "\u3136", "\u3137", "\u3139", "\u313A", "\u313B", "\u313C", "\u313D", "\u313E", "\u313F", "\u3140", "\u3141", "\u3142", "\u3144", "\u3145", "\u3146", "\u3147", "\u3148", "\u314A", "\u314B", "\u314C", "\u314D", "\u314E"];
+var CHO_INDEX = new Map(CHO.map((jamo, index) => [jamo, index]));
+var JUNG_INDEX = new Map(JUNG.map((jamo, index) => [jamo, index]));
+var JONG_INDEX = new Map(JONG.map((jamo, index) => [jamo, index]));
+var MEDIAL_COMPOUND = {
+  "\u3157\u314F": "\u3158",
+  "\u3157\u3150": "\u3159",
+  "\u3157\u3163": "\u315A",
+  "\u315C\u3153": "\u315D",
+  "\u315C\u3154": "\u315E",
+  "\u315C\u3163": "\u315F",
+  "\u3161\u3163": "\u3162"
+};
+var MEDIAL_SPLIT = { "\u3158": "\u3157", "\u3159": "\u3157", "\u315A": "\u3157", "\u315D": "\u315C", "\u315E": "\u315C", "\u315F": "\u315C", "\u3162": "\u3161" };
+var FINAL_COMPOUND = {
+  "\u3131\u3145": "\u3133",
+  "\u3134\u3148": "\u3135",
+  "\u3134\u314E": "\u3136",
+  "\u3139\u3131": "\u313A",
+  "\u3139\u3141": "\u313B",
+  "\u3139\u3142": "\u313C",
+  "\u3139\u3145": "\u313D",
+  "\u3139\u314C": "\u313E",
+  "\u3139\u314D": "\u313F",
+  "\u3139\u314E": "\u3140",
+  "\u3142\u3145": "\u3144"
+};
+var FINAL_SPLIT = {
+  "\u3133": ["\u3131", "\u3145"],
+  "\u3135": ["\u3134", "\u3148"],
+  "\u3136": ["\u3134", "\u314E"],
+  "\u313A": ["\u3139", "\u3131"],
+  "\u313B": ["\u3139", "\u3141"],
+  "\u313C": ["\u3139", "\u3142"],
+  "\u313D": ["\u3139", "\u3145"],
+  "\u313E": ["\u3139", "\u314C"],
+  "\u313F": ["\u3139", "\u314D"],
+  "\u3140": ["\u3139", "\u314E"],
+  "\u3144": ["\u3142", "\u3145"]
+};
+var CONJOINING = /* @__PURE__ */ new Map();
+for (let i = 0; i < CHO.length; i++) CONJOINING.set(String.fromCodePoint(4352 + i), CHO[i]);
+for (let i = 0; i < JUNG.length; i++) CONJOINING.set(String.fromCodePoint(4449 + i), JUNG[i]);
+for (let i = 1; i < JONG.length; i++) CONJOINING.set(String.fromCodePoint(4519 + i), JONG[i]);
+function isSyllable(char) {
+  const code = char.codePointAt(0);
+  return code >= 44032 && code <= 55203;
+}
+function isConsonant(char) {
+  return char !== "" && CHO_INDEX.has(char);
+}
+function isVowel(char) {
+  return char !== "" && JUNG_INDEX.has(char);
+}
+function isFinal(char) {
+  return char !== "" && JONG_INDEX.has(char);
+}
+function syllable(cho, jung, jong = "") {
+  return String.fromCodePoint(44032 + (CHO_INDEX.get(cho) * 21 + JUNG_INDEX.get(jung)) * 28 + JONG_INDEX.get(jong));
+}
+function splitSyllable(char) {
+  const offset = char.codePointAt(0) - 44032;
+  return {
+    cho: CHO[Math.floor(offset / 588)],
+    jung: JUNG[Math.floor(offset % 588 / 28)],
+    jong: JONG[offset % 28]
+  };
+}
+function composeJamo(text) {
+  if (typeof text !== "string" || !text) return "";
+  let out = "";
+  let cho = "";
+  let jung = "";
+  let jong = "";
+  const flush = () => {
+    if (cho && jung) out += syllable(cho, jung, jong);
+    else out += cho || jung;
+    cho = jung = jong = "";
+  };
+  const feed = (raw) => {
+    const char = CONJOINING.get(raw) ?? raw;
+    if (isConsonant(char)) {
+      if (cho && jung && !jong) {
+        if (isFinal(char)) {
+          jong = char;
+        } else {
+          flush();
+          cho = char;
+        }
+      } else if (cho && jung && jong) {
+        const combined = FINAL_COMPOUND[jong + char];
+        if (combined) {
+          jong = combined;
+        } else {
+          flush();
+          cho = char;
+        }
+      } else if (cho) {
+        flush();
+        cho = char;
+      } else {
+        cho = char;
+      }
+      return;
+    }
+    if (isVowel(char)) {
+      if (cho && !jung) {
+        jung = char;
+      } else if (cho && jung && !jong) {
+        const combined = MEDIAL_COMPOUND[jung + char];
+        if (combined) {
+          jung = combined;
+        } else {
+          flush();
+          jung = char;
+        }
+      } else if (cho && jung && jong) {
+        const split = FINAL_SPLIT[jong];
+        const kept = split ? split[0] : "";
+        out += syllable(cho, jung, kept);
+        cho = split ? split[1] : jong;
+        jung = char;
+        jong = "";
+      } else {
+        flush();
+        jung = char;
+      }
+      return;
+    }
+    flush();
+    out += char;
+  };
+  for (const char of text) {
+    if (isSyllable(char)) {
+      const parts = splitSyllable(char);
+      feed(parts.cho);
+      feed(parts.jung);
+      if (parts.jong) feed(parts.jong);
+    } else {
+      feed(char);
+    }
+  }
+  flush();
+  return out;
+}
+function backspaceHangul(text) {
+  if (typeof text !== "string" || !text) return null;
+  const chars = [...text];
+  const last = chars[chars.length - 1];
+  if (isSyllable(last)) {
+    const { cho, jung, jong } = splitSyllable(last);
+    let replacement;
+    if (jong) {
+      const split = FINAL_SPLIT[jong];
+      replacement = syllable(cho, jung, split ? split[0] : "");
+    } else if (MEDIAL_SPLIT[jung]) {
+      replacement = syllable(cho, MEDIAL_SPLIT[jung], "");
+    } else {
+      replacement = cho;
+    }
+    chars[chars.length - 1] = replacement;
+    return chars.join("");
+  }
+  const char = CONJOINING.get(last) ?? last;
+  if (isConsonant(char) || isVowel(char)) {
+    chars.pop();
+    return chars.join("");
+  }
+  return null;
+}
 export {
   NgramModel,
   SuggestEngine,
   UserWords,
+  backspaceHangul,
+  composeJamo,
   parseWordList,
   resolveWordList,
   voiceKanaChar
