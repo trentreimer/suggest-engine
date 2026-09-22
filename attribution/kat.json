@@ -1,0 +1,30 @@
+{
+    "code": "kat",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "kat_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/kat/kat_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 7697
+        },
+        {
+            "name": "HPLT",
+            "file": "kat_Geor (10_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 135240,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 142937,
+    "tokens": 372620,
+    "kept": 10000,
+    "ngramContexts": 9957,
+    "ngramPairs": 76121,
+    "trigramContexts": 26409,
+    "trigramPairs": 47085,
+    "ngramBytes": 763900,
+    "generated": "2026-09-22"
+}

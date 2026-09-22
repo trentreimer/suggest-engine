@@ -1,0 +1,30 @@
+{
+    "code": "uz",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "uzb_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/uzb/uzb_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 1235
+        },
+        {
+            "name": "HPLT",
+            "file": "uzn_Latn (10_1.jsonl.zst, 9_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 107625,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 108860,
+    "tokens": 264782,
+    "kept": 10000,
+    "ngramContexts": 9988,
+    "ngramPairs": 71279,
+    "trigramContexts": 48768,
+    "trigramPairs": 119974,
+    "ngramBytes": 1215144,
+    "generated": "2026-09-22"
+}

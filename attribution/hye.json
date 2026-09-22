@@ -1,0 +1,30 @@
+{
+    "code": "hye",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "hye_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/hye/hye_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 51798
+        },
+        {
+            "name": "HPLT",
+            "file": "hye_Armn (10_1.jsonl.zst, 9_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 136848,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 188646,
+    "tokens": 302501,
+    "kept": 10000,
+    "ngramContexts": 9988,
+    "ngramPairs": 76381,
+    "trigramContexts": 25994,
+    "trigramPairs": 47314,
+    "ngramBytes": 762720,
+    "generated": "2026-09-22"
+}

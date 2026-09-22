@@ -1,0 +1,30 @@
+{
+    "code": "sd",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "snd_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/snd/snd_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 7
+        },
+        {
+            "name": "HPLT",
+            "file": "snd_Arab (10_1.jsonl.zst, 9_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 138043,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 138050,
+    "tokens": 195090,
+    "kept": 10000,
+    "ngramContexts": 9994,
+    "ngramPairs": 78807,
+    "trigramContexts": 48233,
+    "trigramPairs": 153848,
+    "ngramBytes": 1376508,
+    "generated": "2026-09-22"
+}

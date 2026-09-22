@@ -1,0 +1,30 @@
+{
+    "code": "tg",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "tgk_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/tgk/tgk_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 81
+        },
+        {
+            "name": "HPLT",
+            "file": "tgk_Cyrl (10_1.jsonl.zst, 9_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 141017,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 141098,
+    "tokens": 406819,
+    "kept": 10000,
+    "ngramContexts": 9996,
+    "ngramPairs": 78108,
+    "trigramContexts": 36508,
+    "trigramPairs": 79349,
+    "ngramBytes": 981928,
+    "generated": "2026-09-22"
+}

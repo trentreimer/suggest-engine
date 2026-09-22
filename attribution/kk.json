@@ -1,0 +1,30 @@
+{
+    "code": "kk",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "kaz_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/kaz/kaz_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 4575
+        },
+        {
+            "name": "HPLT",
+            "file": "kaz_Cyrl (10_1.jsonl.zst, 9_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 140775,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 145350,
+    "tokens": 369978,
+    "kept": 10000,
+    "ngramContexts": 9991,
+    "ngramPairs": 77363,
+    "trigramContexts": 34164,
+    "trigramPairs": 64580,
+    "ngramBytes": 901092,
+    "generated": "2026-09-22"
+}

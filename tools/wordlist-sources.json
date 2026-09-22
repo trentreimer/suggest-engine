@@ -416,6 +416,295 @@
                 }
             ]
         },
+        "ps": {
+            "script": "Arab",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "pus"
+                },
+                {
+                    "type": "hplt",
+                    "pack": "pbt_Arab",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "uz": {
+            "script": "Latn",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "uzb"
+                },
+                {
+                    "type": "hplt",
+                    "pack": "uzn_Latn",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "az": {
+            "script": "Latn",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "aze"
+                },
+                {
+                    "type": "hplt",
+                    "pack": "azj_Latn",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "sd": {
+            "script": "Arab",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "snd"
+                },
+                {
+                    "type": "hplt",
+                    "pack": "snd_Arab",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "ne": {
+            "script": "Deva",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "npi"
+                },
+                {
+                    "type": "hplt",
+                    "pack": "npi_Deva",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "as": {
+            "script": "Beng",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "asm"
+                },
+                {
+                    "type": "hplt",
+                    "pack": "asm_Beng",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "or": {
+            "script": "Orya",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "ori"
+                },
+                {
+                    "type": "hplt",
+                    "pack": "ory_Orya",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "si": {
+            "script": "Sinh",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "sin"
+                },
+                {
+                    "type": "hplt",
+                    "pack": "sin_Sinh",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "th": {
+            "script": "Thai",
+            "segment": "th",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "tha"
+                },
+                {
+                    "type": "hplt",
+                    "pack": "tha_Thai",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "kk": {
+            "script": "Cyrl",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "kaz"
+                },
+                {
+                    "type": "hplt",
+                    "pack": "kaz_Cyrl",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "tg": {
+            "script": "Cyrl",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "tgk"
+                },
+                {
+                    "type": "hplt",
+                    "pack": "tgk_Cyrl",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "tt": {
+            "script": "Cyrl",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "tat"
+                },
+                {
+                    "type": "hplt",
+                    "pack": "tat_Cyrl",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "ug": {
+            "script": "Arab",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "uig"
+                },
+                {
+                    "type": "hplt",
+                    "pack": "uig_Arab",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "ckb": {
+            "script": "Arab",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "ckb"
+                },
+                {
+                    "type": "hplt",
+                    "pack": "ckb_Arab",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "kat": {
+            "script": "Geor",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "kat"
+                },
+                {
+                    "type": "hplt",
+                    "pack": "kat_Geor",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
+        "hye": {
+            "script": "Armn",
+            "sources": [
+                {
+                    "type": "tatoeba",
+                    "code": "hye"
+                },
+                {
+                    "type": "hplt",
+                    "pack": "hye_Armn",
+                    "maxDocuments": 25000,
+                    "maxSegments": 150000,
+                    "url": "https://hplt-project.org/datasets/v3.0",
+                    "license": "CC0 1.0",
+                    "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+                }
+            ]
+        },
         "ja": {
             "mode": "composition",
             "tatoebaCode": "jpn",

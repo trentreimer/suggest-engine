@@ -473,3 +473,14 @@ test('enableUserWords options replace stored config for later cycles', () => {
     assert.ok(storage.getItem('other:user-words'));
     assert.equal(storage.getItem('ctt:user-words'), null);
 });
+
+test('segmented languages split text with Intl.Segmenter', async () => {
+    const engine = new SuggestEngine({ language: 'th' });
+    await engine.addWordList('main', ['ประเทศไทย', 'สวัสดี', 'สมชาย', 'ผม']);
+
+    assert.equal(engine.wordAt('ผมชื่อสม', 8), 'สม');
+    assert.equal(engine.wordAt('ผมรักประเทศไทย', 4), 'รั');
+    assert.equal(engine.wordAt('ผมรักประเทศไทย', 14), 'ประเทศไทย');
+    assert.deepEqual(engine.previousWords('ผมชื่อสม', 6, 1), ['ชื่อ']);
+    assert.deepEqual(engine.suggestAt('สวัส', 4).map(result => result.text), ['สวัสดี']);
+});

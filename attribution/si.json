@@ -1,0 +1,30 @@
+{
+    "code": "si",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "sin_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/sin/sin_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 75
+        },
+        {
+            "name": "HPLT",
+            "file": "sin_Sinh (10_1.jsonl.zst, 9_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 139978,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 140053,
+    "tokens": 382981,
+    "kept": 10000,
+    "ngramContexts": 9996,
+    "ngramPairs": 77793,
+    "trigramContexts": 28661,
+    "trigramPairs": 57770,
+    "ngramBytes": 831576,
+    "generated": "2026-09-22"
+}

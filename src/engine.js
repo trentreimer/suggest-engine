@@ -3,6 +3,7 @@ import { resolveWordList, parseWordList, escapeForCharacterClass } from './word-
 import { NgramModel, fnv1a } from './ngrams.js';
 import wordCharsByLanguage from '../languages/word-chars.js';
 import compositionByLanguage from '../languages/compositions.js';
+import segmentersByLanguage from '../languages/segmenters.js';
 import { parseComposition, compositionCandidates, normalizeReading, readingToDigits, isReadingLike, voiceKanaChar } from './composition.js';
 
 const userWordsDefaults = {
@@ -30,6 +31,17 @@ function normalizeUserWords(option) {
 
 function wordCharsFor(language) {
     return (language && wordCharsByLanguage[language]) || '';
+}
+
+// Languages whose script has no inter-word spaces (for example Thai) ship a
+// segmentation locale; wordAt/previousWords then split text with
+// Intl.Segmenter, matching the tokenizer used to build the word list.
+function segmenterFor(language) {
+    const locale = language && segmentersByLanguage[language];
+
+    if (!locale || typeof Intl === 'undefined' || typeof Intl.Segmenter !== 'function') return null;
+
+    return new Intl.Segmenter(locale, { granularity: 'word' });
 }
 
 function compositionMinLength(language) {
@@ -109,6 +121,7 @@ export class SuggestEngine {
         const nonWord = `[^\\p{L}\\p{M}'\\-${escapeForCharacterClass(wordCharsFor(language))}]`;
 
         this.compositionCharRegex = null;
+        this.segmenter = segmenterFor(language);
 
         if (kind) {
             this.compositionCharRegex = new RegExp(cjkCharClass[kind], 'u');
@@ -358,6 +371,9 @@ export class SuggestEngine {
         if (typeof text !== 'string') return '';
 
         const end = Math.min(index ?? text.length, text.length);
+
+        if (this.segmenter) return this.segmentedWordAt(text, end);
+
         let start = 0;
 
         for (let i = end - 1; i >= 0; i --) {
@@ -370,10 +386,29 @@ export class SuggestEngine {
         return text.substring(start, end);
     }
 
+    // No-space scripts: the segmenter reports the whole word containing the
+    // caret, so slice from its start to the caret to recover the typed prefix.
+    segmentedWordAt(text, end) {
+        if (end <= 0) return '';
+
+        for (const part of this.segmenter.segment(text)) {
+            const stop = part.index + part.segment.length;
+
+            if (stop < end) continue;
+            if (part.index > end) break;
+
+            return part.isWordLike ? text.slice(part.index, end) : '';
+        }
+
+        return '';
+    }
+
     previousWords(text, index, count = 2) {
         if (typeof text !== 'string') return [];
 
         const end = Math.min(index ?? text.length, text.length);
+
+        if (this.segmenter) return this.segmentedPreviousWords(text, end, count);
 
         if (this.separatorRegex) {
             const words = [];
@@ -416,6 +451,20 @@ export class SuggestEngine {
         }
 
         return words;
+    }
+
+    // No-space scripts: segment the text before the caret and take the last
+    // `count` words, nearest first (matching the non-segmented ordering).
+    segmentedPreviousWords(text, end, count) {
+        const words = [];
+
+        if (end <= 0) return words;
+
+        for (const part of this.segmenter.segment(text.slice(0, end))) {
+            if (part.isWordLike) words.push(part.segment);
+        }
+
+        return words.slice(-count).reverse();
     }
 
     suggest(word, context) {

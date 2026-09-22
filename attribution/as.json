@@ -1,0 +1,30 @@
+{
+    "code": "as",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "asm_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/asm/asm_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 14805
+        },
+        {
+            "name": "HPLT",
+            "file": "asm_Beng (10_1.jsonl.zst, 9_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 137178,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 151983,
+    "tokens": 405070,
+    "kept": 10000,
+    "ngramContexts": 9996,
+    "ngramPairs": 78268,
+    "trigramContexts": 33313,
+    "trigramPairs": 72441,
+    "ngramBytes": 929376,
+    "generated": "2026-09-22"
+}

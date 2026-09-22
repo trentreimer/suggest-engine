@@ -37,7 +37,12 @@ const scriptRanges = {
     Guru: '\\p{Script=Guru}',
     Mlym: '\\p{Script=Mlym}',
     Knda: '\\p{Script=Knda}',
+    Orya: '\\p{Script=Orya}',
+    Sinh: '\\p{Script=Sinh}',
+    Thai: '\\p{Script=Thai}',
     Ethi: '\\p{Script=Ethi}',
+    Geor: '\\p{Script=Geor}',
+    Armn: '\\p{Script=Armn}',
 };
 
 const jaSegmenter = new Intl.Segmenter('ja', { granularity: 'word' });
@@ -74,13 +79,48 @@ function escapeForCharacterClass(chars) {
 // corpus and shipped in languages/word-chars.js; hosts never configure this.
 const connectorCandidates = '\u200C\u200D';
 
-function tokenize(sentence, script, extras = '') {
+// Languages whose script has no inter-word spaces (for example Thai) declare a
+// `segment` locale; their corpus text is split with Intl.Segmenter instead of a
+// script-run regex, and the same locale ships to the runtime in
+// languages/segmenters.js so host text is segmented the same way.
+const segmenters = new Map();
+
+function segmenterFor(locale) {
+    let segmenter = segmenters.get(locale);
+
+    if (!segmenter) segmenters.set(locale, segmenter = new Intl.Segmenter(locale, { granularity: 'word' }));
+
+    return segmenter;
+}
+
+function tokenize(sentence, script, extras = '', segment = '') {
     const normalized = sentence.normalize('NFC').toLowerCase();
     const connectors = escapeForCharacterClass(`'-${extras}`);
-    const tokenRegex = new RegExp(`[${scriptRanges[script]}\\p{M}${connectors}]+`, 'gu');
     const edgeTrim = new RegExp(`^[${connectors}]+|[${connectors}]+$`, 'gu');
     const invalidToken = new RegExp(`[^\\p{L}\\p{M}\\p{N}${connectors}]`, 'u');
     const tokens = [];
+
+    if (segment) {
+        // Whole token must be the target script; the segmenter also glues Latin
+        // words and digits onto adjacent script runs (e.g. Thai "10เรื่อง").
+        const scriptOnly = new RegExp(`^[${scriptRanges[script]}\\p{M}${connectors}]+$`, 'u');
+
+        for (const part of segmenterFor(segment).segment(normalized)) {
+            if (!part.isWordLike) continue;
+
+            const token = part.segment.replace(edgeTrim, '');
+
+            if (token.length < 2) continue;
+            if (!scriptOnly.test(token)) continue;
+            if (invalidToken.test(token)) continue;
+
+            tokens.push(token);
+        }
+
+        return tokens;
+    }
+
+    const tokenRegex = new RegExp(`[${scriptRanges[script]}\\p{M}${connectors}]+`, 'gu');
 
     for (const match of normalized.matchAll(tokenRegex)) {
         const token = match[0].replace(edgeTrim, '');
@@ -473,6 +513,21 @@ function regenerateCompositionManifest(exclude = []) {
 }
 
 /**
+ * Regenerates languages/segmenters.js — the manifest of bundled word-list
+ * languages whose script has no inter-word spaces. Each entry names the locale
+ * the runtime (and the build) segments host text with via Intl.Segmenter.
+ */
+function regenerateSegmenterManifest(exclude = []) {
+    const codes = Object.keys(config.languages)
+        .filter(code => config.languages[code].segment)
+        .filter(code => !exclude.includes(code) && existsSync(join(bundledDir, `${code}.js`)));
+    const entries = codes.map(code => `    ${code}: '${config.languages[code].segment}',`);
+    const text = 'export default ' + (entries.length ? '{\n' + entries.join('\n') + '\n};\n' : '{};\n');
+
+    return writeIfChanged(join(bundledDir, 'segmenters.js'), text);
+}
+
+/**
  * Vocabulary for a composition language: the unique candidates of the emitted
  * composition text, in first-seen order (the file is frequency-ordered by
  * reading). The engine rebuilds this list from the bundled module and the
@@ -764,6 +819,7 @@ async function removeLanguages(codes) {
 
     regenerateManifest(codes);
     regenerateCompositionManifest(codes);
+    regenerateSegmenterManifest(codes);
     regenerateAttribution();
 
     await mergeWordChars(Object.fromEntries(codes.map(code => [code, null])));
@@ -1422,7 +1478,7 @@ function compareWords(a, b) {
 }
 
 async function countTrigrams(code, source, dumps, kept, pairCounts, vocabularySize, idByWord, extras, tokenizer) {
-    const count = tokenizer ?? (text => tokenize(text, source.script, extras));
+    const count = tokenizer ?? (text => tokenize(text, source.script, extras, source.segment));
     const trigramTopK = source.trigramTopK ?? config.trigramTopK ?? 4;
     const trigramMinPairCount = source.trigramMinPairCount ?? config.trigramMinPairCount ?? 3;
     const trigramMinCount = source.trigramMinCount ?? config.trigramMinCount ?? 3;
@@ -1504,7 +1560,7 @@ async function buildNgrams(code, source, dumps, kept, extras, tokenizer) {
     const vocabularySize = kept.length;
     const topK = source.ngramTopK ?? config.ngramTopK ?? 8;
     const minCount = source.ngramMinCount ?? config.ngramMinCount ?? 2;
-    const count = tokenizer ?? (text => tokenize(text, source.script, extras));
+    const count = tokenizer ?? (text => tokenize(text, source.script, extras, source.segment));
     const idByWord = new Map();
 
     for (let i = 0; i < vocabularySize; i ++) idByWord.set(kept[i][0], i);
@@ -1596,7 +1652,7 @@ async function buildWords(code, source, dumps, profanity, stats) {
     const counts = new Map();
 
     await forEachText(dumps, text => {
-        for (const token of tokenize(text, source.script, candidates)) {
+        for (const token of tokenize(text, source.script, candidates, source.segment)) {
             counts.set(token, (counts.get(token) || 0) + 1);
         }
     });
@@ -1755,6 +1811,7 @@ async function main() {
 
     regenerateManifest();
     regenerateCompositionManifest();
+    regenerateSegmenterManifest();
     regenerateAttribution();
 
     if (subset.length) {

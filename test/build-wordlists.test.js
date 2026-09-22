@@ -64,6 +64,11 @@ test('tokenize trims connectors at token edges and splits on anything else', () 
     assert.deepEqual(tokenize('ab#cd', 'Latn'), ['ab', 'cd']);
 });
 
+test('tokenize segments no-space scripts and keeps only the target script', () => {
+    assert.deepEqual(tokenize('ผมรักประเทศไทย 10เรื่อง และ 2567', 'Thai', '', 'th'), ['ผม', 'รัก', 'ประเทศไทย', 'และ']);
+    assert.deepEqual(tokenize('hello ประเทศไทย world', 'Thai', '', 'th'), ['ประเทศไทย']);
+});
+
 test('deriveWordChars picks the candidates present in kept words', () => {
     assert.equal(deriveWordChars(['می\u200cروم', 'است']), '\u200C');
     assert.equal(deriveWordChars(['است', 'هست']), '');

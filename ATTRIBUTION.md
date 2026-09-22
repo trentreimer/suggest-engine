@@ -58,6 +58,22 @@ bigram context models) and reference copies in the host project
 | rw | `kin_Latn` | CC0 1.0 | 136,019 | 10,000 | 9,989 | 73,984 | 31,967 | 63,042 | 2026-09-20 |
 | ny | `nya_Latn (10_1.jsonl.zst, 9_1.jsonl.zst)` | CC0 1.0 | 136,301 | 10,000 | 9,983 | 67,986 | 31,480 | 60,577 | 2026-09-20 |
 | wo | `wol_Latn (9_1.jsonl.zst, 8_1.jsonl.zst, 7_1.jsonl.zst, 6_1.jsonl.zst, 5_1.jsonl.zst)` | CC0 1.0 | 136,129 | 10,000 | 9,925 | 61,344 | 41,106 | 87,830 | 2026-09-20 |
+| ps | `pus_sentences.tsv.bz2`<br>`pbt_Arab (10_1.jsonl.zst, 9_1.jsonl.zst)` | CC-BY 2.0 FR<br>CC0 1.0 | 143,066 | 10,000 | 9,996 | 78,915 | 44,750 | 118,356 | 2026-09-22 |
+| uz | `uzb_sentences.tsv.bz2`<br>`uzn_Latn (10_1.jsonl.zst, 9_1.jsonl.zst)` | CC-BY 2.0 FR<br>CC0 1.0 | 108,860 | 10,000 | 9,988 | 71,279 | 48,768 | 119,974 | 2026-09-22 |
+| az | `aze_sentences.tsv.bz2`<br>`azj_Latn (10_1.jsonl.zst)` | CC-BY 2.0 FR<br>CC0 1.0 | 146,539 | 10,000 | 9,993 | 77,708 | 42,399 | 91,795 | 2026-09-22 |
+| sd | `snd_sentences.tsv.bz2`<br>`snd_Arab (10_1.jsonl.zst, 9_1.jsonl.zst)` | CC-BY 2.0 FR<br>CC0 1.0 | 138,050 | 10,000 | 9,994 | 78,807 | 48,233 | 153,848 | 2026-09-22 |
+| ne | `npi_sentences.tsv.bz2`<br>`npi_Deva (10_1.jsonl.zst, 9_1.jsonl.zst)` | CC-BY 2.0 FR<br>CC0 1.0 | 144,368 | 10,000 | 9,999 | 79,402 | 40,058 | 98,665 | 2026-09-22 |
+| as | `asm_sentences.tsv.bz2`<br>`asm_Beng (10_1.jsonl.zst, 9_1.jsonl.zst)` | CC-BY 2.0 FR<br>CC0 1.0 | 151,983 | 10,000 | 9,996 | 78,268 | 33,313 | 72,441 | 2026-09-22 |
+| or | `ori_sentences.tsv.bz2`<br>`ory_Orya (10_1.jsonl.zst, 9_1.jsonl.zst)` | CC-BY 2.0 FR<br>CC0 1.0 | 136,923 | 10,000 | 9,998 | 77,644 | 27,812 | 53,558 | 2026-09-22 |
+| si | `sin_sentences.tsv.bz2`<br>`sin_Sinh (10_1.jsonl.zst, 9_1.jsonl.zst)` | CC-BY 2.0 FR<br>CC0 1.0 | 140,053 | 10,000 | 9,996 | 77,793 | 28,661 | 57,770 | 2026-09-22 |
+| th | `tha_sentences.tsv.bz2`<br>`tha_Thai` | CC-BY 2.0 FR<br>CC0 1.0 | 114,414 | 10,000 | 9,998 | 76,141 | 49,999 | 186,254 | 2026-09-22 |
+| kk | `kaz_sentences.tsv.bz2`<br>`kaz_Cyrl (10_1.jsonl.zst, 9_1.jsonl.zst)` | CC-BY 2.0 FR<br>CC0 1.0 | 145,350 | 10,000 | 9,991 | 77,363 | 34,164 | 64,580 | 2026-09-22 |
+| tg | `tgk_sentences.tsv.bz2`<br>`tgk_Cyrl (10_1.jsonl.zst, 9_1.jsonl.zst)` | CC-BY 2.0 FR<br>CC0 1.0 | 141,098 | 10,000 | 9,996 | 78,108 | 36,508 | 79,349 | 2026-09-22 |
+| tt | `tat_sentences.tsv.bz2`<br>`tat_Cyrl (10_1.jsonl.zst, 9_1.jsonl.zst)` | CC-BY 2.0 FR<br>CC0 1.0 | 237,480 | 10,000 | 9,999 | 78,223 | 29,212 | 58,510 | 2026-09-22 |
+| ug | `uig_sentences.tsv.bz2`<br>`uig_Arab (10_1.jsonl.zst, 9_1.jsonl.zst, 8_1.jsonl.zst, 7_1.jsonl.zst)` | CC-BY 2.0 FR<br>CC0 1.0 | 149,337 | 10,000 | 9,976 | 75,558 | 30,158 | 58,223 | 2026-09-22 |
+| ckb | `ckb_sentences.tsv.bz2`<br>`ckb_Arab (10_1.jsonl.zst, 9_1.jsonl.zst)` | CC-BY 2.0 FR<br>CC0 1.0 | 157,507 | 10,000 | 9,996 | 78,204 | 28,131 | 56,180 | 2026-09-22 |
+| kat | `kat_sentences.tsv.bz2`<br>`kat_Geor (10_1.jsonl.zst)` | CC-BY 2.0 FR<br>CC0 1.0 | 142,937 | 10,000 | 9,957 | 76,121 | 26,409 | 47,085 | 2026-09-22 |
+| hye | `hye_sentences.tsv.bz2`<br>`hye_Armn (10_1.jsonl.zst, 9_1.jsonl.zst)` | CC-BY 2.0 FR<br>CC0 1.0 | 188,646 | 10,000 | 9,988 | 76,381 | 25,994 | 47,314 | 2026-09-22 |
 
 ## Composition data
 

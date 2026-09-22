@@ -1,0 +1,30 @@
+{
+    "code": "az",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "aze_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/aze/aze_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 13527
+        },
+        {
+            "name": "HPLT",
+            "file": "azj_Latn (10_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 133012,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 146539,
+    "tokens": 328640,
+    "kept": 10000,
+    "ngramContexts": 9993,
+    "ngramPairs": 77708,
+    "trigramContexts": 42399,
+    "trigramPairs": 91795,
+    "ngramBytes": 1077224,
+    "generated": "2026-09-22"
+}

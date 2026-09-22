@@ -71,7 +71,7 @@ suggestion all count as completion).
 
 ### Supported languages
 
-The engine ships data for 45 languages: 43 word-list languages, whose bundled
+The engine ships data for 61 languages: 59 word-list languages, whose bundled
 dictionaries complete typed prefixes, plus Mandarin and Japanese as
 composition languages, which convert pinyin or kana readings into characters
 (see [Composition languages](#composition-languages)).
@@ -121,6 +121,22 @@ composition languages, which convert pinyin or kana readings into characters
 | `rw` | Kinyarwanda | word list |
 | `ny` | Chichewa | word list |
 | `wo` | Wolof | word list |
+| `ps` | Pashto | word list |
+| `uz` | Uzbek | word list |
+| `az` | Azerbaijani | word list |
+| `sd` | Sindhi | word list |
+| `ne` | Nepali | word list |
+| `as` | Assamese | word list |
+| `or` | Odia | word list |
+| `si` | Sinhala | word list |
+| `th` | Thai | word list (segmented) |
+| `kk` | Kazakh | word list |
+| `tg` | Tajik | word list |
+| `tt` | Tatar | word list |
+| `ug` | Uyghur | word list |
+| `ckb` | Central Kurdish | word list |
+| `kat` | Georgian | word list |
+| `hye` | Armenian | word list |
 | `zh` | Mandarin | composition (pinyin) |
 | `ja` | Japanese | composition (kana) |
 
@@ -179,6 +195,19 @@ Marathi, so `می‌روم` is one word). One rule governs all three places that
 define word characters: tokenizing host text (`wordAt`/`previousWords`),
 parsing word lists (`parseWordList`), and validating learned user words.
 `setLanguage()` applies the language's set; hosts never configure it.
+
+### Segmented languages
+
+Some scripts are written without inter-word spaces, so a word-character run
+would swallow a whole phrase. Thai (`th`) is bundled this way: the build splits
+corpus text and the runtime splits host text with `Intl.Segmenter`
+(`granularity: 'word'`) instead of the boundary regex. The segmentation locale
+is shipped in `languages/segmenters.js`, derived from each language's `segment`
+config, so `wordAt`/`previousWords` and the bundled word list agree. `suggest`,
+`suggestAt`, context ranking and `nextWords` work as for any word-list language.
+Because word boundaries are inherently ambiguous, the engine trusts the
+segmenter's choice; a partial word the segmenter splits differently may complete
+against the trailing piece rather than the whole run.
 
 ## API
 
@@ -240,7 +269,7 @@ the same option shapes as the constructor.
 
 ### Bundled word lists
 
-The library ships frequency-ordered word lists for 43 languages in
+The library ships frequency-ordered word lists for 59 languages in
 `languages/` (one JS module per language, plus a manifest and the
 connector-character map `word-chars.js`) — the bundled word-list languages are
 listed in [Supported languages](#supported-languages). `pcm` combines a manually
@@ -248,8 +277,9 @@ cached Common Voice archive (CC0) with two
 automatically fetched CC-BY 4.0 corpora; rebuilding it needs the archive
 described in [Regenerating the data](#regenerating-the-data). The `ur`, `ta`,
 `te`, `am`, `yo`, `zu`, `gu`, `pa`, `ml`, `kn`, `om`, `ig`, `xh`, `so`, `sn`,
-`rw`, `ny`, and `wo` lists are sampled from the CC0 HPLT v3.0 web corpora, also
-described there.
+`rw`, `ny`, `wo`, `ps`, `uz`, `az`, `sd`, `ne`, `as`, `or`, `si`, `th`, `kk`,
+`tg`, `tt`, `ug`, `ckb`, `kat`, and `hye` lists are sampled from the CC0 HPLT
+v3.0 web corpora, also described there.
 Load the list for the active language with:
 
 ```js

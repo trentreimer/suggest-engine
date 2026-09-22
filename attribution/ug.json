@@ -1,0 +1,30 @@
+{
+    "code": "ug",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "uig_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/uig/uig_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 10097
+        },
+        {
+            "name": "HPLT",
+            "file": "uig_Arab (10_1.jsonl.zst, 9_1.jsonl.zst, 8_1.jsonl.zst, 7_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 139240,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 149337,
+    "tokens": 465548,
+    "kept": 10000,
+    "ngramContexts": 9976,
+    "ngramPairs": 75558,
+    "trigramContexts": 30158,
+    "trigramPairs": 58223,
+    "ngramBytes": 836304,
+    "generated": "2026-09-22"
+}

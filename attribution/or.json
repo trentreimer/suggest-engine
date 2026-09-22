@@ -1,0 +1,30 @@
+{
+    "code": "or",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "ori_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/ori/ori_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 403
+        },
+        {
+            "name": "HPLT",
+            "file": "ory_Orya (10_1.jsonl.zst, 9_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 136520,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 136923,
+    "tokens": 357286,
+    "kept": 10000,
+    "ngramContexts": 9998,
+    "ngramPairs": 77644,
+    "trigramContexts": 27812,
+    "trigramPairs": 53558,
+    "ngramBytes": 807352,
+    "generated": "2026-09-22"
+}

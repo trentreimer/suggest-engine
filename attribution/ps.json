@@ -1,0 +1,30 @@
+{
+    "code": "ps",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "pus_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/pus/pus_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 66
+        },
+        {
+            "name": "HPLT",
+            "file": "pbt_Arab (10_1.jsonl.zst, 9_1.jsonl.zst)",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 143000,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 143066,
+    "tokens": 309874,
+    "kept": 10000,
+    "ngramContexts": 9996,
+    "ngramPairs": 78915,
+    "trigramContexts": 44750,
+    "trigramPairs": 118356,
+    "ngramBytes": 1207120,
+    "generated": "2026-09-22"
+}

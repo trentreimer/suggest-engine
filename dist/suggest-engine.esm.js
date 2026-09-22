@@ -314,6 +314,11 @@ var compositions_default = {
   zh: { reading: "pinyin", load: () => import("./chunks/zh-Z74ITQ5A.js") }
 };
 
+// languages/segmenters.js
+var segmenters_default = {
+  th: "th"
+};
+
 // src/composition.js
 function kataToHira(text) {
   return text.replace(/[\u30A1-\u30F6]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 96));
@@ -473,6 +478,11 @@ function normalizeUserWords(option) {
 function wordCharsFor(language) {
   return language && word_chars_default[language] || "";
 }
+function segmenterFor(language) {
+  const locale = language && segmenters_default[language];
+  if (!locale || typeof Intl === "undefined" || typeof Intl.Segmenter !== "function") return null;
+  return new Intl.Segmenter(locale, { granularity: "word" });
+}
 function compositionMinLength(language) {
   return compositions_default[language] ? 1 : 2;
 }
@@ -530,6 +540,7 @@ var SuggestEngine = class {
     const kind = compositions_default[language]?.reading;
     const nonWord = `[^\\p{L}\\p{M}'\\-${escapeForCharacterClass(wordCharsFor(language))}]`;
     this.compositionCharRegex = null;
+    this.segmenter = segmenterFor(language);
     if (kind) {
       this.compositionCharRegex = new RegExp(cjkCharClass[kind], "u");
       this.boundaryRegex = new RegExp(`(?:${nonWord}|${this.compositionCharRegex.source})`, "u");
@@ -550,7 +561,7 @@ var SuggestEngine = class {
     const language = String(lang || this.language).toLowerCase();
     if (!/^[a-z]{2,3}(-[a-z0-9]+)*$/.test(language)) return false;
     if (!this.bundledManifest) {
-      this.bundledManifest = (await import("./chunks/languages-CECPMYEH.js")).default;
+      this.bundledManifest = (await import("./chunks/languages-HQVHSWLI.js")).default;
     }
     const loader = this.bundledManifest[language];
     if (!loader) return false;
@@ -687,6 +698,7 @@ var SuggestEngine = class {
   wordAt(text, index) {
     if (typeof text !== "string") return "";
     const end = Math.min(index ?? text.length, text.length);
+    if (this.segmenter) return this.segmentedWordAt(text, end);
     let start = 0;
     for (let i = end - 1; i >= 0; i--) {
       if (this.boundaryRegex.test(text.charAt(i))) {
@@ -696,9 +708,22 @@ var SuggestEngine = class {
     }
     return text.substring(start, end);
   }
+  // No-space scripts: the segmenter reports the whole word containing the
+  // caret, so slice from its start to the caret to recover the typed prefix.
+  segmentedWordAt(text, end) {
+    if (end <= 0) return "";
+    for (const part of this.segmenter.segment(text)) {
+      const stop = part.index + part.segment.length;
+      if (stop < end) continue;
+      if (part.index > end) break;
+      return part.isWordLike ? text.slice(part.index, end) : "";
+    }
+    return "";
+  }
   previousWords(text, index, count = 2) {
     if (typeof text !== "string") return [];
     const end = Math.min(index ?? text.length, text.length);
+    if (this.segmenter) return this.segmentedPreviousWords(text, end, count);
     if (this.separatorRegex) {
       const words2 = [];
       let cursor2 = end;
@@ -726,6 +751,16 @@ var SuggestEngine = class {
       words.push(text.substring(cursor, stop));
     }
     return words;
+  }
+  // No-space scripts: segment the text before the caret and take the last
+  // `count` words, nearest first (matching the non-segmented ordering).
+  segmentedPreviousWords(text, end, count) {
+    const words = [];
+    if (end <= 0) return words;
+    for (const part of this.segmenter.segment(text.slice(0, end))) {
+      if (part.isWordLike) words.push(part.segment);
+    }
+    return words.slice(-count).reverse();
   }
   suggest(word, context) {
     const previousWords = typeof context === "string" && context.length ? this.previousWords(context, context.length, 2) : [];

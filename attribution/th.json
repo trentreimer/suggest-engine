@@ -1,0 +1,30 @@
+{
+    "code": "th",
+    "mode": "words",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "tha_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/tha/tha_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 6849
+        },
+        {
+            "name": "HPLT",
+            "file": "tha_Thai",
+            "url": "https://hplt-project.org/datasets/v3.0",
+            "license": "CC0 1.0",
+            "sentences": 107565,
+            "attribution": "HPLT v3.0 (High Performance Language Technologies), CC0 1.0, https://hplt-project.org/datasets/v3.0"
+        }
+    ],
+    "sentences": 114414,
+    "tokens": 75022,
+    "kept": 10000,
+    "ngramContexts": 9998,
+    "ngramPairs": 76141,
+    "trigramContexts": 49999,
+    "trigramPairs": 186254,
+    "ngramBytes": 1509620,
+    "generated": "2026-09-22"
+}

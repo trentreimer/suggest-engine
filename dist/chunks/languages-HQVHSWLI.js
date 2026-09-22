@@ -42,7 +42,23 @@ var languages_default = {
   sn: () => import("./sn-D4RE2GTX.js"),
   rw: () => import("./rw-X3ZAV4CY.js"),
   ny: () => import("./ny-JN2CYITI.js"),
-  wo: () => import("./wo-L6ZQMGYQ.js")
+  wo: () => import("./wo-L6ZQMGYQ.js"),
+  ps: () => import("./ps-VT2S6CPV.js"),
+  uz: () => import("./uz-RKW7I2MG.js"),
+  az: () => import("./az-NWVDASGH.js"),
+  sd: () => import("./sd-XY6YYPXB.js"),
+  ne: () => import("./ne-5LUMFXDV.js"),
+  as: () => import("./as-LQGGUSP3.js"),
+  or: () => import("./or-A6BQJZIF.js"),
+  si: () => import("./si-UDJ545L5.js"),
+  th: () => import("./th-HGLNKQTZ.js"),
+  kk: () => import("./kk-XPE6DFSY.js"),
+  tg: () => import("./tg-OQZSYD4K.js"),
+  tt: () => import("./tt-745ORQ5J.js"),
+  ug: () => import("./ug-C7JERZ5Y.js"),
+  ckb: () => import("./ckb-G7ML2RU3.js"),
+  kat: () => import("./kat-27TLVLTT.js"),
+  hye: () => import("./hye-XSKMHI2A.js")
 };
 export {
   languages_default as default
