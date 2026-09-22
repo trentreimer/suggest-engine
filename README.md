@@ -41,9 +41,9 @@ const engine = new SuggestEngine({
     userWords: { storagePrefix: 'myapp' },   // optional component; see below
 });
 
-// You can add a custom word list for suggestion candidates
-// by calling addWordList() after loadWordList() OR
-// you can use addWordList() alone instead of using the default word list.
+// You can add a custom word list for extra suggestion candidates
+// by calling addWordList() after loadWordList()
+// OR you can use addWordList() alone to ONLY load your own word list.
 await engine.addWordList('main', '/wordlists/en.txt');   // url | string[] | { text }
 
 // Context ranking - works best with the default word list
