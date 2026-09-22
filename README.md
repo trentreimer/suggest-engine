@@ -31,8 +31,8 @@ engine.suggest('wo', 'in the ');
 
 ## Full example
 
-This example uses hard-coded strings to demonstrate methods, but your application will
-supply many of those strings programmatically.
+This example uses hard-coded strings to demonstrate methods, but your application would
+supply some of those strings programmatically.
 
 ```js
 import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.0/dist/suggest-engine.esm.js';
