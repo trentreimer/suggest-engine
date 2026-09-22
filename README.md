@@ -20,7 +20,7 @@ import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-e
 
 const engine = new SuggestEngine({ language: 'en' });
 
-await engine.loadWordList();   // Loads the supplied word list for the selected language
+await engine.loadWordList();   // Loads word list for the selected language
 await engine.loadSuggestionContext();   // optional suggestion context data
 
 engine.suggest('hel');
@@ -41,8 +41,9 @@ const engine = new SuggestEngine({
     userWords: { storagePrefix: 'myapp' },   // optional component; see below
 });
 
-// You can add a custom word list for suggestion candidates.
-// Can be used after loadWordList() or instead of the default word list.
+// You can add a custom word list for suggestion candidates
+// by calling addWordList() after loadWordList() OR
+// you can use addWordList() alone instead of using the default word list.
 await engine.addWordList('main', '/wordlists/en.txt');   // url | string[] | { text }
 
 // Context ranking - works best with the default word list
