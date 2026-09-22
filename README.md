@@ -44,7 +44,7 @@ const engine = new SuggestEngine({
 // You can add a custom word list for extra suggestion candidates
 // by calling addWordList() after loadWordList()
 // OR you can use addWordList() alone to ONLY load your own word list.
-// Here we skip the built-in word list and use a custom one.
+// Here we SKIP the built-in word list and use a custom one instead.
 await engine.addWordList('main', '/wordlists/en.txt');   // url | string[] | { text }
 
 // Context ranking - works best with the default word list
@@ -52,7 +52,7 @@ await engine.loadSuggestionContext();                     // context ranking for
 
 engine.setLanguage('ar');                                 // switches sources + user-words bucket
 await engine.loadWordList();
-// Here we add to the built-in Arabic word list.
+// Here we ADD to the built-in Arabic word list.
 await engine.addWordList('main', '/wordlists/ar.txt');
 // Notice we are skipping the suggestion context in this part of the example.
 
