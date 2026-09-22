@@ -31,8 +31,8 @@ engine.suggest('wo', 'in the ');
 
 ## Full example
 
-This example uses hard-coded strings to demonstrate methods, but your application would
-supply some of those strings programmatically.
+This example uses hard-coded strings to demonstrate methods, but other than configuration,
+your application would probably supply some of the strings programmatically.
 
 ```js
 import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.0/dist/suggest-engine.esm.js';
@@ -49,17 +49,17 @@ await engine.addWordList('main', '/wordlists/en.txt'); // url | string[] | { tex
 // Context ranking - works best with the default word list
 await engine.loadSuggestionContext();
 
-const word = engine.wordAt('Hello Sar', 10); // → 'Sar'
-const suggestions = engine.suggest(word, 'Hello '); // context: text before the current word
-// → [{ text: 'Sarah', insertSuffix: 'rah', source: 'user-words' }, ...]
+// Record a word that the user wants to see in suggestions
+engine.recordWord('Sarah');
 
-engine.suggestAt('Hello Sar', 10); // word + preceding word in one call
-// → same ranking as above, derived from text and caret
+var currentText = 'Hello Sar';
+
+const word = engine.wordAt(currentText, 100); // → 'Sar'
+const suggestions = engine.suggestAt(currentText, 100); // word + preceding text in one call
+// → [{ text: 'Sarah', insertSuffix: 'rah', source: 'user-words' }, ...]
 
 engine.nextWords('Hello'); // likely next words with no prefix typed
 // → [{ text: 'Sarah', insertSuffix: 'Sarah', source: 'user-words' }, ...]
-
-engine.recordWord('Sarah'); // call when the user completes a word
 ```
 
 The host owns all editor interaction: feed the engine text plus a caret index,
