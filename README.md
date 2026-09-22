@@ -537,4 +537,6 @@ models are copied to `dist/languages/` for `loadSuggestionContext()`.
 The bundle and bundled data are committed, so version tags are directly
 consumable through jsDelivr
 (`cdn.jsdelivr.net/gh/trentreimer/suggest-engine@<tag>/dist/...`) with no npm
-step. Bump the tag when `src/`, `languages/` or the bundle format changes.
+step. Bump the tag when `src/`, `languages/` or the bundle format changes, and
+update the example URLs above to match — `npm test` checks the README's CDN
+examples against `package.json` and fails when they disagree.
