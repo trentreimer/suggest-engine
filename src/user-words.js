@@ -6,13 +6,15 @@ export class UserWords {
         this.recordAfter = recordAfter;
         this.maxWords = maxWords;
         this.language = 'en';
+        this.minLength = 2;
         this.data = null;
         this.storageAvailable = true;
         this.setLanguage(this.language);
     }
 
-    setLanguage(language, extraChars = '') {
+    setLanguage(language, extraChars = '', minLength = 2) {
         this.language = String(language || 'en').toLowerCase();
+        this.minLength = minLength;
         this.validWordRegex = new RegExp(`^[\\p{L}\\p{M}'\\-${escapeForCharacterClass(extraChars)}]+$`, 'u');
     }
 
@@ -59,7 +61,7 @@ export class UserWords {
 
         const trimmed = word.trim();
 
-        if (trimmed.length < 2) return false;
+        if (trimmed.length < this.minLength) return false;
         if (!this.validWordRegex.test(trimmed)) return false;
 
         const bucket = this.bucket();

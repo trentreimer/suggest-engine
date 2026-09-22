@@ -35,12 +35,14 @@ var UserWords = class {
     this.recordAfter = recordAfter;
     this.maxWords = maxWords;
     this.language = "en";
+    this.minLength = 2;
     this.data = null;
     this.storageAvailable = true;
     this.setLanguage(this.language);
   }
-  setLanguage(language, extraChars = "") {
+  setLanguage(language, extraChars = "", minLength = 2) {
     this.language = String(language || "en").toLowerCase();
+    this.minLength = minLength;
     this.validWordRegex = new RegExp(`^[\\p{L}\\p{M}'\\-${escapeForCharacterClass(extraChars)}]+$`, "u");
   }
   ensureLoaded() {
@@ -74,7 +76,7 @@ var UserWords = class {
   record(word) {
     if (typeof word !== "string") return false;
     const trimmed = word.trim();
-    if (trimmed.length < 2) return false;
+    if (trimmed.length < this.minLength) return false;
     if (!this.validWordRegex.test(trimmed)) return false;
     const bucket = this.bucket();
     const key = trimmed.toLowerCase();
@@ -306,11 +308,158 @@ var word_chars_default = {
   mr: "\u200D"
 };
 
+// languages/compositions.js
+var compositions_default = {
+  ja: { reading: "kana", load: () => import("./chunks/ja-S7I5ANBQ.js") },
+  zh: { reading: "pinyin", load: () => import("./chunks/zh-Z74ITQ5A.js") }
+};
+
+// src/composition.js
+function kataToHira(text) {
+  return text.replace(/[\u30A1-\u30F6]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 96));
+}
+function normalizeReading(text) {
+  return kataToHira(String(text ?? "").normalize("NFC").toLowerCase().replaceAll(" ", ""));
+}
+var t9DigitKeys = {
+  a: "2",
+  b: "2",
+  c: "2",
+  d: "3",
+  e: "3",
+  f: "3",
+  g: "4",
+  h: "4",
+  i: "4",
+  j: "5",
+  k: "5",
+  l: "5",
+  m: "6",
+  n: "6",
+  o: "6",
+  p: "7",
+  q: "7",
+  r: "7",
+  s: "7",
+  t: "8",
+  u: "8",
+  v: "8",
+  w: "9",
+  x: "9",
+  y: "9",
+  z: "9"
+};
+function readingToDigits(reading) {
+  let digits = "";
+  for (const char of reading) {
+    const digit = t9DigitKeys[char];
+    if (!digit) return null;
+    digits += digit;
+  }
+  return digits;
+}
+function isReadingLike(text, reading) {
+  if (typeof text !== "string" || !text.length) return false;
+  return reading === "kana" ? /^[\p{Script=Hiragana}\p{Script=Katakana}\u30FC]+$/u.test(text) : /^[a-z]+$/.test(text);
+}
+function parseComposition(text, reading) {
+  const entries = [];
+  const exact = /* @__PURE__ */ new Map();
+  const readingByCandidate = /* @__PURE__ */ new Map();
+  const seen = /* @__PURE__ */ new Set();
+  const vocab = [];
+  for (const line of String(text ?? "").split("\n")) {
+    const parts = line.trim().split(/\s+/);
+    if (parts.length < 2) continue;
+    const key = normalizeReading(parts[0]);
+    const candidates = parts.slice(1);
+    if (!key) continue;
+    if (!exact.has(key)) exact.set(key, []);
+    exact.get(key).push(...candidates);
+    entries.push({ reading: key, candidates });
+    for (const candidate of candidates) {
+      if (!readingByCandidate.has(candidate)) readingByCandidate.set(candidate, key);
+      if (!seen.has(candidate)) {
+        seen.add(candidate);
+        vocab.push(candidate);
+      }
+    }
+  }
+  return { reading, entries, exact, readingByCandidate, vocab };
+}
+function compositionCandidates(composition, buffer) {
+  const seen = /* @__PURE__ */ new Set();
+  const candidates = [];
+  const push = (text) => {
+    if (!seen.has(text)) {
+      seen.add(text);
+      candidates.push(text);
+    }
+  };
+  if (!composition || typeof buffer !== "string" || !buffer.length) return candidates;
+  if (/^\d+$/.test(buffer)) {
+    for (const entry of composition.entries) {
+      const digits = readingToDigits(entry.reading);
+      if (digits !== null && digits.startsWith(buffer)) for (const text of entry.candidates) push(text);
+    }
+    return candidates;
+  }
+  const wanted = normalizeReading(buffer);
+  if (!wanted) return candidates;
+  for (const text of composition.exact.get(wanted) || []) push(text);
+  for (const entry of composition.entries) {
+    if (entry.reading.startsWith(wanted)) for (const text of entry.candidates) push(text);
+  }
+  return candidates;
+}
+var voicedPairs = [
+  ["\u304B\u304D\u304F\u3051\u3053", "\u304C\u304E\u3050\u3052\u3054"],
+  ["\u3055\u3057\u3059\u305B\u305D", "\u3056\u3058\u305A\u305C\u305E"],
+  ["\u305F\u3061\u3064\u3066\u3068", "\u3060\u3062\u3065\u3067\u3069"],
+  ["\u306F\u3072\u3075\u3078\u307B", "\u3070\u3073\u3076\u3079\u307C"],
+  ["\u30AB\u30AD\u30AF\u30B1\u30B3", "\u30AC\u30AE\u30B0\u30B2\u30B4"],
+  ["\u30B5\u30B7\u30B9\u30BB\u30BD", "\u30B6\u30B8\u30BA\u30BC\u30BE"],
+  ["\u30BF\u30C1\u30C4\u30C6\u30C8", "\u30C0\u30C2\u30C5\u30C7\u30C9"],
+  ["\u30CF\u30D2\u30D5\u30D8\u30DB", "\u30D0\u30D3\u30D6\u30D9\u30DC"],
+  ["\u30A6", "\u30F4"]
+];
+var semiVoicedPairs = [
+  ["\u306F\u3072\u3075\u3078\u307B", "\u3071\u3074\u3077\u307A\u307D"],
+  ["\u30CF\u30D2\u30D5\u30D8\u30DB", "\u30D1\u30D4\u30D7\u30DA\u30DD"]
+];
+var dakutenForward = /* @__PURE__ */ new Map();
+var dakutenBackward = /* @__PURE__ */ new Map();
+var semiVoicedForward = /* @__PURE__ */ new Map();
+var semiVoicedBackward = /* @__PURE__ */ new Map();
+for (const [base, voiced] of voicedPairs) {
+  for (let i = 0; i < base.length; i++) {
+    dakutenForward.set(base[i], voiced[i]);
+    dakutenBackward.set(voiced[i], base[i]);
+  }
+}
+for (const [base, voiced] of semiVoicedPairs) {
+  for (let i = 0; i < base.length; i++) {
+    semiVoicedForward.set(base[i], voiced[i]);
+    semiVoicedBackward.set(voiced[i], base[i]);
+  }
+}
+function voiceKanaChar(char, mark) {
+  const backward = mark === "\u309C" ? semiVoicedBackward : dakutenBackward;
+  const forward = mark === "\u309C" ? semiVoicedForward : dakutenForward;
+  if (backward.has(char)) return backward.get(char);
+  if (forward.has(char)) return forward.get(char);
+  return null;
+}
+
 // src/engine.js
 var userWordsDefaults = {
   storagePrefix: "suggest-engine",
   recordAfter: 2,
   maxWords: 300
+};
+var cjkCharClass = {
+  kana: "[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}\\u30FC]",
+  pinyin: "[\\p{Script=Han}]"
 };
 function normalizeUserWords(option) {
   if (!option) return null;
@@ -324,8 +473,8 @@ function normalizeUserWords(option) {
 function wordCharsFor(language) {
   return language && word_chars_default[language] || "";
 }
-function boundaryRegexFor(language) {
-  return new RegExp(`[^\\p{L}\\p{M}'\\-${escapeForCharacterClass(wordCharsFor(language))}]`, "u");
+function compositionMinLength(language) {
+  return compositions_default[language] ? 1 : 2;
 }
 function buildSource(words) {
   const lowered = new Array(words.length);
@@ -353,23 +502,42 @@ var SuggestEngine = class {
   constructor(options = {}) {
     this.language = options.language ? String(options.language).trim().toLowerCase() : null;
     this.maxSuggestions = options.maxSuggestions ?? 5;
-    this.boundaryRegex = boundaryRegexFor(this.language);
+    this.applyTokenizer(this.language);
     const userWordsOptions = normalizeUserWords(options.userWords);
     this.userWordsOptions = userWordsOptions;
     this.userWordsStore = userWordsOptions ? new UserWords(userWordsOptions) : null;
-    if (this.language) this.userWordsStore?.setLanguage(this.language, wordCharsFor(this.language));
+    if (this.language) this.userWordsStore?.setLanguage(this.language, wordCharsFor(this.language), compositionMinLength(this.language));
     this.sourcesByLanguage = {};
     this.ngramsByLanguage = {};
     this.ngramIndexes = {};
     this.bundledManifest = null;
+    this.compositionsByLanguage = {};
+    this.compositionBuffers = {};
   }
   setLanguage(language) {
     if (typeof language !== "string" || !language.trim()) {
       throw new TypeError("setLanguage requires a language code");
     }
     this.language = language.trim().toLowerCase();
-    this.boundaryRegex = boundaryRegexFor(this.language);
-    this.userWordsStore?.setLanguage(this.language, wordCharsFor(this.language));
+    this.applyTokenizer(this.language);
+    this.userWordsStore?.setLanguage(this.language, wordCharsFor(this.language), compositionMinLength(this.language));
+  }
+  // Composition languages have no spaces: wordAt treats each CJK character
+  // as its own boundary (no partial CJK word is ever reported at the caret —
+  // suggestions come from the composition buffer), while context extraction
+  // walks the text character by character.
+  applyTokenizer(language) {
+    const kind = compositions_default[language]?.reading;
+    const nonWord = `[^\\p{L}\\p{M}'\\-${escapeForCharacterClass(wordCharsFor(language))}]`;
+    this.compositionCharRegex = null;
+    if (kind) {
+      this.compositionCharRegex = new RegExp(cjkCharClass[kind], "u");
+      this.boundaryRegex = new RegExp(`(?:${nonWord}|${this.compositionCharRegex.source})`, "u");
+      this.separatorRegex = new RegExp(nonWord, "u");
+    } else {
+      this.boundaryRegex = new RegExp(nonWord, "u");
+      this.separatorRegex = null;
+    }
   }
   async addWordList(name, source) {
     if (!this.language) throw new Error("Set a language with setLanguage() before adding word lists");
@@ -382,7 +550,7 @@ var SuggestEngine = class {
     const language = String(lang || this.language).toLowerCase();
     if (!/^[a-z]{2,3}(-[a-z0-9]+)*$/.test(language)) return false;
     if (!this.bundledManifest) {
-      this.bundledManifest = (await import("./chunks/languages-OM77UAUS.js")).default;
+      this.bundledManifest = (await import("./chunks/languages-CECPMYEH.js")).default;
     }
     const loader = this.bundledManifest[language];
     if (!loader) return false;
@@ -419,6 +587,103 @@ var SuggestEngine = class {
     delete this.ngramIndexes[language];
     return true;
   }
+  async loadComposition(lang) {
+    const language = String(lang || this.language).toLowerCase();
+    if (!/^[a-z]{2,3}(-[a-z0-9]+)*$/.test(language)) return false;
+    const entry = compositions_default[language];
+    if (!entry) return false;
+    const module = await entry.load();
+    const composition = parseComposition(module.default, entry.reading);
+    this.compositionsByLanguage[language] = composition;
+    if (!this.sourcesByLanguage[language]) this.sourcesByLanguage[language] = {};
+    this.sourcesByLanguage[language].bundled = buildSource(composition.vocab);
+    delete this.ngramIndexes[language];
+    return true;
+  }
+  get compositionActive() {
+    return !!compositions_default[this.language];
+  }
+  compositionBuffer() {
+    return this.compositionBuffers[this.language] || "";
+  }
+  compositionAppend(key) {
+    if (typeof key !== "string" || !key.length) return [];
+    if (!this.compositionsByLanguage[this.language]) return [];
+    this.compositionBuffers[this.language] = this.compositionBuffer() + key;
+    return this.compositionSuggestions();
+  }
+  compositionBackspace() {
+    const buffer = this.compositionBuffer();
+    if (!buffer) return false;
+    const chars = [...buffer];
+    chars.pop();
+    this.compositionBuffers[this.language] = chars.join("");
+    return true;
+  }
+  compositionReset() {
+    this.compositionBuffers[this.language] = "";
+  }
+  compositionVoiceLast(mark) {
+    const buffer = this.compositionBuffer();
+    if (!buffer) return false;
+    const chars = [...buffer];
+    const replacement = voiceKanaChar(chars[chars.length - 1], mark);
+    if (!replacement) return false;
+    chars[chars.length - 1] = replacement;
+    this.compositionBuffers[this.language] = chars.join("");
+    return true;
+  }
+  compositionSuggestions(context, limit = this.maxSuggestions) {
+    const composition = this.compositionsByLanguage[this.language];
+    if (!composition) return [];
+    const buffer = this.compositionBuffer();
+    if (!buffer) return [];
+    const previousWords = typeof context === "string" && context.length ? this.previousWords(context, context.length, 2) : [];
+    return this.compositionSuggestionsInternal(composition, previousWords, buffer, limit);
+  }
+  compositionSuggestionsInternal(composition, previousWords, buffer, limit = this.maxSuggestions) {
+    const base = compositionCandidates(composition, buffer);
+    if (!base.length) return [];
+    const pending = new Set(base);
+    const results = [];
+    const add = (text, source) => {
+      if (!pending.has(text) || results.length >= limit) return;
+      pending.delete(text);
+      results.push({ text, insertSuffix: text, source });
+    };
+    if (previousWords.length) {
+      const index = this.ngramIndex(this.language);
+      if (index) {
+        const collect = (slice) => {
+          if (!slice) return;
+          for (let i = 0; i < slice.ids.length; i++) add(index.words[slice.ids[i]], "bundled");
+        };
+        const previousId = index.ids.get(previousWords[0].toLowerCase());
+        if (previousWords.length >= 2) {
+          const first = index.ids.get(previousWords[1].toLowerCase());
+          if (first !== void 0 && previousId !== void 0) collect(index.model.trigram(first, previousId));
+        }
+        if (previousId !== void 0) collect(index.model.bigram(previousId));
+      }
+    }
+    if (this.userWordsStore) {
+      const digits = /^\d+$/.test(buffer) ? buffer : null;
+      const wanted = digits ? null : normalizeReading(buffer);
+      for (const entry of this.userWordsStore.list()) {
+        if (results.length >= limit) break;
+        if (entry.count < this.userWordsStore.recordAfter) continue;
+        const reading = composition.readingByCandidate.get(entry.word);
+        if (!reading) continue;
+        const matches = digits ? (readingToDigits(reading) || "").startsWith(digits) : reading.startsWith(wanted);
+        if (matches) add(entry.word, "user-words");
+      }
+    }
+    for (const text of base) {
+      if (results.length >= limit) break;
+      add(text, "bundled");
+    }
+    return results;
+  }
   wordAt(text, index) {
     if (typeof text !== "string") return "";
     const end = Math.min(index ?? text.length, text.length);
@@ -433,14 +698,32 @@ var SuggestEngine = class {
   }
   previousWords(text, index, count = 2) {
     if (typeof text !== "string") return [];
+    const end = Math.min(index ?? text.length, text.length);
+    if (this.separatorRegex) {
+      const words2 = [];
+      let cursor2 = end;
+      while (words2.length < count && cursor2 > 0) {
+        while (cursor2 > 0 && this.separatorRegex.test(text.charAt(cursor2 - 1))) cursor2--;
+        if (!cursor2) break;
+        if (this.compositionCharRegex.test(text.charAt(cursor2 - 1))) {
+          words2.push(text.charAt(cursor2 - 1));
+          cursor2--;
+          continue;
+        }
+        const stop = cursor2;
+        while (cursor2 > 0 && !this.separatorRegex.test(text.charAt(cursor2 - 1)) && !this.compositionCharRegex.test(text.charAt(cursor2 - 1))) cursor2--;
+        words2.push(text.slice(cursor2, stop));
+      }
+      return words2;
+    }
     const words = [];
-    let cursor = Math.min(index ?? text.length, text.length);
+    let cursor = end;
     while (words.length < count && cursor > 0) {
       while (cursor > 0 && this.boundaryRegex.test(text.charAt(cursor - 1))) cursor--;
-      const end = cursor;
+      const stop = cursor;
       while (cursor > 0 && !this.boundaryRegex.test(text.charAt(cursor - 1))) cursor--;
-      if (end === cursor) break;
-      words.push(text.substring(cursor, end));
+      if (stop === cursor) break;
+      words.push(text.substring(cursor, stop));
     }
     return words;
   }
@@ -449,6 +732,11 @@ var SuggestEngine = class {
     return this.suggestInternal(word, previousWords);
   }
   suggestAt(text, caret) {
+    const composition = this.language ? this.compositionsByLanguage[this.language] : null;
+    if (composition && this.compositionBuffer()) {
+      const end2 = Math.min(caret ?? text.length, text.length);
+      return this.compositionSuggestionsInternal(composition, this.previousWords(text, end2, 2), this.compositionBuffer());
+    }
     const word = this.wordAt(text, caret);
     const end = Math.min(caret ?? text.length, text.length) - word.length;
     return this.suggestInternal(word, this.previousWords(text, end, 2));
@@ -460,6 +748,12 @@ var SuggestEngine = class {
   suggestInternal(word, previousWords) {
     if (!this.language) return [];
     if (typeof word !== "string" || word.length === 0) return [];
+    const composition = this.compositionsByLanguage[this.language];
+    if (composition && this.compositionBuffer()) return this.compositionSuggestionsInternal(composition, previousWords, this.compositionBuffer());
+    if (composition && isReadingLike(word, composition.reading)) {
+      const results2 = this.compositionSuggestionsInternal(composition, previousWords, word);
+      if (results2.length) return results2;
+    }
     const wanted = word.toLowerCase();
     const limit = this.maxSuggestions;
     const seen = /* @__PURE__ */ new Set();
@@ -597,7 +891,7 @@ var SuggestEngine = class {
     if (!normalized) return;
     this.userWordsOptions = normalized;
     this.userWordsStore = new UserWords(normalized);
-    if (this.language) this.userWordsStore.setLanguage(this.language);
+    if (this.language) this.userWordsStore.setLanguage(this.language, wordCharsFor(this.language), compositionMinLength(this.language));
   }
   disableUserWords() {
     this.userWordsStore?.destroy();
@@ -609,5 +903,6 @@ export {
   SuggestEngine,
   UserWords,
   parseWordList,
-  resolveWordList
+  resolveWordList,
+  voiceKanaChar
 };

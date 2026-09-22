@@ -1,11 +1,22 @@
 {
     "code": "zh",
     "mode": "composition",
-    "tatoebaCode": "cmn",
-    "sourceFile": "cmn_sentences.tsv.bz2",
-    "sourceUrl": "https://downloads.tatoeba.org/exports/per_language/cmn/cmn_sentences.tsv.bz2",
-    "license": "CC-BY 2.0 FR",
-    "sentences": 89040,
-    "readings": 20287,
-    "generated": "2026-09-17"
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "cmn_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/cmn/cmn_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 89065
+        }
+    ],
+    "sentences": 89065,
+    "readings": 20288,
+    "candidates": 12129,
+    "ngramContexts": 6867,
+    "ngramPairs": 21724,
+    "trigramContexts": 5322,
+    "trigramPairs": 7164,
+    "ngramBytes": 199392,
+    "generated": "2026-09-22"
 }

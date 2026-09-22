@@ -276,6 +276,7 @@ function emitComposition(byReading, banned, topReadings, maxCandidates) {
 
 function extractText(line, dump) {
     if (dump.format === 'text') return line;
+    if (dump.format === 'furigana') return parseFurigana(line).surface;
 
     const parts = line.split('\t');
 
@@ -418,6 +419,15 @@ function attributionRecord(stat, generated) {
         }
     } else {
         record.readings = stat.readings;
+        record.candidates = stat.vocab;
+
+        if (stat.ngrams) {
+            record.ngramContexts = stat.ngrams.contexts;
+            record.ngramPairs = stat.ngrams.pairs;
+            record.trigramContexts = stat.ngrams.trigramContexts;
+            record.trigramPairs = stat.ngrams.trigramPairs;
+            record.ngramBytes = stat.ngrams.bytes;
+        }
     }
 
     record.generated = generated;
@@ -445,6 +455,75 @@ function regenerateManifest(exclude = []) {
     const text = 'export default {\n' + codes.map(code => `    ${code}: () => import('./${code}.js'),`).join('\n') + '\n};\n';
 
     return writeIfChanged(join(bundledDir, 'index.js'), text);
+}
+
+/**
+ * Regenerates languages/compositions.js — the manifest of bundled composition
+ * languages. Each entry names the reading system (pinyin, kana) the runtime
+ * normalizes input with and lazily loads the data module.
+ */
+function regenerateCompositionManifest(exclude = []) {
+    const codes = Object.keys(config.languages)
+        .filter(code => config.languages[code].mode === 'composition')
+        .filter(code => !exclude.includes(code) && existsSync(join(bundledDir, `${code}.js`)));
+    const entries = codes.map(code => `    ${code}: { reading: '${config.languages[code].reading}', load: () => import('./${code}.js') },`);
+    const text = 'export default ' + (entries.length ? '{\n' + entries.join('\n') + '\n};\n' : '{};\n');
+
+    return writeIfChanged(join(bundledDir, 'compositions.js'), text);
+}
+
+/**
+ * Vocabulary for a composition language: the unique candidates of the emitted
+ * composition text, in first-seen order (the file is frequency-ordered by
+ * reading). The engine rebuilds this list from the bundled module and the
+ * ngram model validates against it by hash, so both sides must agree.
+ */
+function compositionVocab(text) {
+    const seen = new Set();
+    const vocab = [];
+
+    for (const line of text.split('\n')) {
+        const candidates = line.trim().split(/\s+/).slice(1);
+
+        for (const candidate of candidates) {
+            if (!candidate || seen.has(candidate)) continue;
+
+            seen.add(candidate);
+            vocab.push(candidate);
+        }
+    }
+
+    return vocab;
+}
+
+// Composition ngram tokenizers: corpus text reduced to the segmenter's
+// word-like CJK segments — the same shapes the composition tables hold, so
+// vocabulary lookups line up. Unknown segments reset the context chain.
+function tokenizeZhComposition(text) {
+    const tokens = [];
+
+    for (const seg of zhSegmenter.segment(text.normalize('NFC'))) {
+        if (seg.isWordLike && /^[\p{Script=Han}]+$/u.test(seg.segment)) tokens.push(seg.segment);
+    }
+
+    return tokens;
+}
+
+function tokenizeJaComposition(text) {
+    const tokens = [];
+
+    for (const seg of jaSegmenter.segment(parseFurigana(text).surface)) {
+        if (!seg.isWordLike) continue;
+
+        const word = seg.segment;
+
+        if (!/\p{Script=Han}/u.test(word)) continue;
+        if (!new RegExp(`^${wordClass}+$`, 'u').test(word)) continue;
+
+        tokens.push(word);
+    }
+
+    return tokens;
 }
 
 function escapeStringLiteral(text) {
@@ -531,7 +610,7 @@ function regenerateAttribution() {
         .map(record => {
             const { files, licenses, sentences } = sourceCells(record);
 
-            return `| ${record.code} | ${files} | ${licenses} | ${sentences.toLocaleString('en')} | ${record.readings.toLocaleString('en')} | ${record.generated} |`;
+            return `| ${record.code} | ${files} | ${licenses} | ${sentences.toLocaleString('en')} | ${record.readings.toLocaleString('en')} | ${record.candidates.toLocaleString('en')} | ${record.ngramContexts ? record.ngramContexts.toLocaleString('en') : '—'} | ${record.ngramPairs ? record.ngramPairs.toLocaleString('en') : '—'} | ${record.trigramContexts ? record.trigramContexts.toLocaleString('en') : '—'} | ${record.trigramPairs ? record.trigramPairs.toLocaleString('en') : '—'} | ${record.generated} |`;
         })
         .join('\n');
     const manualSources = records.flatMap(record => recordSources(record)
@@ -586,13 +665,14 @@ ${wordRows}
 
 ## Composition data
 
-Reading-to-word conversion files used by the host's composition input
-(\`languages/<code>/composition.txt\`); \`ja\` derives kana readings from Tatoeba's
-furigana transcriptions, \`zh\` derives toneless pinyin readings with
+Bundled composition data (\`languages/<code>.js\` with \`<code>.ngram.bin\`
+context models over the candidate vocabulary) and reference copies in the host
+project (\`languages/<code>/composition.txt\`); \`ja\` derives kana readings from
+Tatoeba's furigana transcriptions, \`zh\` derives toneless pinyin readings with
 [pinyin-pro](https://github.com/zh-lx/pinyin-pro) (MIT, build-time dependency only).
 
-| Language | Source file | License | Segments | Readings | Generated |
-|---|---|---|---|---|---|
+| Language | Source file | License | Segments | Readings | Candidates | Bigram contexts | Bigram pairs | Trigram contexts | Trigram pairs | Generated |
+|---|---|---|---|---|---|---|---|---|---|---|
 ${compositionRows}
 
 ## Source selection
@@ -683,6 +763,7 @@ async function removeLanguages(codes) {
     }
 
     regenerateManifest(codes);
+    regenerateCompositionManifest(codes);
     regenerateAttribution();
 
     await mergeWordChars(Object.fromEntries(codes.map(code => [code, null])));
@@ -1340,7 +1421,8 @@ function compareWords(a, b) {
     return a < b ? -1 : a > b ? 1 : 0;
 }
 
-async function countTrigrams(code, source, dumps, kept, pairCounts, vocabularySize, idByWord, extras) {
+async function countTrigrams(code, source, dumps, kept, pairCounts, vocabularySize, idByWord, extras, tokenizer) {
+    const count = tokenizer ?? (text => tokenize(text, source.script, extras));
     const trigramTopK = source.trigramTopK ?? config.trigramTopK ?? 4;
     const trigramMinPairCount = source.trigramMinPairCount ?? config.trigramMinPairCount ?? 3;
     const trigramMinCount = source.trigramMinCount ?? config.trigramMinCount ?? 3;
@@ -1367,7 +1449,7 @@ async function countTrigrams(code, source, dumps, kept, pairCounts, vocabularySi
         let previous = -1;
         let previous2 = -1;
 
-        for (const token of tokenize(text, source.script, extras)) {
+        for (const token of count(text)) {
             const id = idByWord.get(token);
 
             if (id === undefined) {
@@ -1418,10 +1500,11 @@ async function countTrigrams(code, source, dumps, kept, pairCounts, vocabularySi
     return contexts;
 }
 
-async function buildNgrams(code, source, dumps, kept, extras) {
+async function buildNgrams(code, source, dumps, kept, extras, tokenizer) {
     const vocabularySize = kept.length;
     const topK = source.ngramTopK ?? config.ngramTopK ?? 8;
     const minCount = source.ngramMinCount ?? config.ngramMinCount ?? 2;
+    const count = tokenizer ?? (text => tokenize(text, source.script, extras));
     const idByWord = new Map();
 
     for (let i = 0; i < vocabularySize; i ++) idByWord.set(kept[i][0], i);
@@ -1433,7 +1516,7 @@ async function buildNgrams(code, source, dumps, kept, extras) {
     await forEachText(dumps, text => {
         let previous = -1;
 
-        for (const token of tokenize(text, source.script, extras)) {
+        for (const token of count(text)) {
             const id = idByWord.get(token);
 
             if (id === undefined) {
@@ -1450,7 +1533,7 @@ async function buildNgrams(code, source, dumps, kept, extras) {
         }
     });
 
-    const trigramContexts = await countTrigrams(code, source, dumps, kept, pairCounts, vocabularySize, idByWord, extras);
+    const trigramContexts = await countTrigrams(code, source, dumps, kept, pairCounts, vocabularySize, idByWord, extras, tokenizer);
     const byContext = new Map();
 
     for (const [key, count] of pairCounts) {
@@ -1570,11 +1653,17 @@ async function buildZhComposition(source, dump, profanity, stats) {
 
     const text = emitComposition(byReading, banned, source.compositionTopReadings ?? config.compositionTopReadings, source.compositionMaxCandidates ?? config.compositionMaxCandidates);
 
-    console.log(`[zh] ${sentences} sentences, ${byReading.size} readings`);
+    // Bundled composition module plus a context model over its vocabulary.
+    writeIfChanged(join(bundledDir, 'zh.js'), `export default \`${escapeTemplateLiteral(text)}\`;\n`);
+
+    const vocab = compositionVocab(text);
+    const ngrams = await buildNgrams('zh', source, [dump], vocab.map(word => [word, 1]), '', tokenizeZhComposition);
+
+    console.log(`[zh] ${sentences} sentences, ${byReading.size} readings, ${vocab.length} candidates`);
 
     if (hostLanguagesDir) writeWithBackup(join(hostLanguagesDir, 'zh', 'composition.txt'), join(hostLanguagesDir, 'zh', 'composition-previous.txt'), text);
 
-    stats.push({ code: 'zh', mode: 'composition', dumps: [dump], readings: byReading.size, sentences });
+    stats.push({ code: 'zh', mode: 'composition', dumps: [dump], readings: byReading.size, sentences, vocab: vocab.length, ngrams });
 }
 
 async function buildJaComposition(source, profanity, stats, cache) {
@@ -1599,11 +1688,18 @@ async function buildJaComposition(source, profanity, stats, cache) {
 
     const text = emitComposition(byReading, banned, source.compositionTopReadings ?? config.compositionTopReadings, source.compositionMaxCandidates ?? config.compositionMaxCandidates);
 
-    console.log(`[ja] ${rows} transcriptions, ${byReading.size} readings`);
+    // Bundled composition module plus a context model over its vocabulary.
+    writeIfChanged(join(bundledDir, 'ja.js'), `export default \`${escapeTemplateLiteral(text)}\`;\n`);
+
+    const vocab = compositionVocab(text);
+    const dump = { name: 'Tatoeba', path, file: 'jpn_transcriptions.tsv.bz2', url, license: 'CC-BY 2.0 FR', sentences: rows, format: 'furigana' };
+    const ngrams = await buildNgrams('ja', source, [dump], vocab.map(word => [word, 1]), '', tokenizeJaComposition);
+
+    console.log(`[ja] ${rows} transcriptions, ${byReading.size} readings, ${vocab.length} candidates`);
 
     if (hostLanguagesDir) writeWithBackup(join(hostLanguagesDir, 'ja', 'composition.txt'), join(hostLanguagesDir, 'ja', 'composition-previous.txt'), text);
 
-    stats.push({ code: 'ja', mode: 'composition', dumps: [{ name: 'Tatoeba', file: 'jpn_transcriptions.tsv.bz2', url, license: 'CC-BY 2.0 FR', sentences: rows }], readings: byReading.size, sentences: rows });
+    stats.push({ code: 'ja', mode: 'composition', dumps: [dump], readings: byReading.size, sentences: rows, vocab: vocab.length, ngrams });
 }
 
 async function main() {
@@ -1658,6 +1754,7 @@ async function main() {
     await mergeWordChars(Object.fromEntries(stats.filter(stat => stat.mode === 'words').map(stat => [stat.code, stat.wordChars])));
 
     regenerateManifest();
+    regenerateCompositionManifest();
     regenerateAttribution();
 
     if (subset.length) {

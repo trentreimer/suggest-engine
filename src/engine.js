@@ -2,11 +2,18 @@ import { UserWords } from './user-words.js';
 import { resolveWordList, parseWordList, escapeForCharacterClass } from './word-lists.js';
 import { NgramModel, fnv1a } from './ngrams.js';
 import wordCharsByLanguage from '../languages/word-chars.js';
+import compositionByLanguage from '../languages/compositions.js';
+import { parseComposition, compositionCandidates, normalizeReading, readingToDigits, isReadingLike, voiceKanaChar } from './composition.js';
 
 const userWordsDefaults = {
     storagePrefix: 'suggest-engine',
     recordAfter: 2,
     maxWords: 300,
+};
+
+const cjkCharClass = {
+    kana: '[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}\\u30FC]',
+    pinyin: '[\\p{Script=Han}]',
 };
 
 function normalizeUserWords(option) {
@@ -23,6 +30,10 @@ function normalizeUserWords(option) {
 
 function wordCharsFor(language) {
     return (language && wordCharsByLanguage[language]) || '';
+}
+
+function compositionMinLength(language) {
+    return compositionByLanguage[language] ? 1 : 2;
 }
 
 function boundaryRegexFor(language) {
@@ -64,17 +75,19 @@ export class SuggestEngine {
     constructor(options = {}) {
         this.language = options.language ? String(options.language).trim().toLowerCase() : null;
         this.maxSuggestions = options.maxSuggestions ?? 5;
-        this.boundaryRegex = boundaryRegexFor(this.language);
+        this.applyTokenizer(this.language);
 
         const userWordsOptions = normalizeUserWords(options.userWords);
         this.userWordsOptions = userWordsOptions;
         this.userWordsStore = userWordsOptions ? new UserWords(userWordsOptions) : null;
-        if (this.language) this.userWordsStore?.setLanguage(this.language, wordCharsFor(this.language));
+        if (this.language) this.userWordsStore?.setLanguage(this.language, wordCharsFor(this.language), compositionMinLength(this.language));
 
         this.sourcesByLanguage = {};
         this.ngramsByLanguage = {};
         this.ngramIndexes = {};
         this.bundledManifest = null;
+        this.compositionsByLanguage = {};
+        this.compositionBuffers = {};
     }
 
     setLanguage(language) {
@@ -83,8 +96,28 @@ export class SuggestEngine {
         }
 
         this.language = language.trim().toLowerCase();
-        this.boundaryRegex = boundaryRegexFor(this.language);
-        this.userWordsStore?.setLanguage(this.language, wordCharsFor(this.language));
+        this.applyTokenizer(this.language);
+        this.userWordsStore?.setLanguage(this.language, wordCharsFor(this.language), compositionMinLength(this.language));
+    }
+
+    // Composition languages have no spaces: wordAt treats each CJK character
+    // as its own boundary (no partial CJK word is ever reported at the caret —
+    // suggestions come from the composition buffer), while context extraction
+    // walks the text character by character.
+    applyTokenizer(language) {
+        const kind = compositionByLanguage[language]?.reading;
+        const nonWord = `[^\\p{L}\\p{M}'\\-${escapeForCharacterClass(wordCharsFor(language))}]`;
+
+        this.compositionCharRegex = null;
+
+        if (kind) {
+            this.compositionCharRegex = new RegExp(cjkCharClass[kind], 'u');
+            this.boundaryRegex = new RegExp(`(?:${nonWord}|${this.compositionCharRegex.source})`, 'u');
+            this.separatorRegex = new RegExp(nonWord, 'u');
+        } else {
+            this.boundaryRegex = new RegExp(nonWord, 'u');
+            this.separatorRegex = null;
+        }
     }
 
     async addWordList(name, source) {
@@ -164,6 +197,163 @@ export class SuggestEngine {
         return true;
     }
 
+    async loadComposition(lang) {
+        const language = String(lang || this.language).toLowerCase();
+
+        if (!/^[a-z]{2,3}(-[a-z0-9]+)*$/.test(language)) return false;
+
+        const entry = compositionByLanguage[language];
+
+        if (!entry) return false;
+
+        const module = await entry.load();
+        const composition = parseComposition(module.default, entry.reading);
+
+        this.compositionsByLanguage[language] = composition;
+
+        if (!this.sourcesByLanguage[language]) this.sourcesByLanguage[language] = {};
+
+        // The candidate vocabulary acts as the bundled word list: it validates
+        // context models by hash, powers nextWords(), and lets suggest()
+        // complete CJK words already present in the host's text.
+        this.sourcesByLanguage[language].bundled = buildSource(composition.vocab);
+        delete this.ngramIndexes[language];
+
+        return true;
+    }
+
+    get compositionActive() {
+        return !!compositionByLanguage[this.language];
+    }
+
+    compositionBuffer() {
+        return this.compositionBuffers[this.language] || '';
+    }
+
+    compositionAppend(key) {
+        if (typeof key !== 'string' || !key.length) return [];
+        if (!this.compositionsByLanguage[this.language]) return [];
+
+        this.compositionBuffers[this.language] = this.compositionBuffer() + key;
+
+        return this.compositionSuggestions();
+    }
+
+    compositionBackspace() {
+        const buffer = this.compositionBuffer();
+
+        if (!buffer) return false;
+
+        const chars = [...buffer];
+
+        chars.pop();
+        this.compositionBuffers[this.language] = chars.join('');
+
+        return true;
+    }
+
+    compositionReset() {
+        this.compositionBuffers[this.language] = '';
+    }
+
+    compositionVoiceLast(mark) {
+        const buffer = this.compositionBuffer();
+
+        if (!buffer) return false;
+
+        const chars = [...buffer];
+        const replacement = voiceKanaChar(chars[chars.length - 1], mark);
+
+        if (!replacement) return false;
+
+        chars[chars.length - 1] = replacement;
+        this.compositionBuffers[this.language] = chars.join('');
+
+        return true;
+    }
+
+    compositionSuggestions(context, limit = this.maxSuggestions) {
+        const composition = this.compositionsByLanguage[this.language];
+
+        if (!composition) return [];
+
+        const buffer = this.compositionBuffer();
+
+        if (!buffer) return [];
+
+        const previousWords = typeof context === 'string' && context.length
+            ? this.previousWords(context, context.length, 2)
+            : [];
+
+        return this.compositionSuggestionsInternal(composition, previousWords, buffer, limit);
+    }
+
+    compositionSuggestionsInternal(composition, previousWords, buffer, limit = this.maxSuggestions) {
+        const base = compositionCandidates(composition, buffer);
+
+        if (!base.length) return [];
+
+        const pending = new Set(base);
+        const results = [];
+
+        const add = (text, source) => {
+            if (!pending.has(text) || results.length >= limit) return;
+
+            pending.delete(text);
+            results.push({ text, insertSuffix: text, source });
+        };
+
+        if (previousWords.length) {
+            const index = this.ngramIndex(this.language);
+
+            if (index) {
+                const collect = slice => {
+                    if (!slice) return;
+
+                    for (let i = 0; i < slice.ids.length; i ++) add(index.words[slice.ids[i]], 'bundled');
+                };
+
+                const previousId = index.ids.get(previousWords[0].toLowerCase());
+
+                if (previousWords.length >= 2) {
+                    const first = index.ids.get(previousWords[1].toLowerCase());
+
+                    if (first !== undefined && previousId !== undefined) collect(index.model.trigram(first, previousId));
+                }
+
+                if (previousId !== undefined) collect(index.model.bigram(previousId));
+            }
+        }
+
+        if (this.userWordsStore) {
+            const digits = /^\d+$/.test(buffer) ? buffer : null;
+            const wanted = digits ? null : normalizeReading(buffer);
+
+            for (const entry of this.userWordsStore.list()) {
+                if (results.length >= limit) break;
+                if (entry.count < this.userWordsStore.recordAfter) continue;
+
+                const reading = composition.readingByCandidate.get(entry.word);
+
+                if (!reading) continue;
+
+                const matches = digits
+                    ? (readingToDigits(reading) || '').startsWith(digits)
+                    : reading.startsWith(wanted);
+
+                if (matches) add(entry.word, 'user-words');
+            }
+        }
+
+        for (const text of base) {
+            if (results.length >= limit) break;
+
+            add(text, 'bundled');
+        }
+
+        return results;
+    }
+
     wordAt(text, index) {
         if (typeof text !== 'string') return '';
 
@@ -183,19 +373,46 @@ export class SuggestEngine {
     previousWords(text, index, count = 2) {
         if (typeof text !== 'string') return [];
 
+        const end = Math.min(index ?? text.length, text.length);
+
+        if (this.separatorRegex) {
+            const words = [];
+            let cursor = end;
+
+            while (words.length < count && cursor > 0) {
+                while (cursor > 0 && this.separatorRegex.test(text.charAt(cursor - 1))) cursor --;
+
+                if (!cursor) break;
+
+                if (this.compositionCharRegex.test(text.charAt(cursor - 1))) {
+                    words.push(text.charAt(cursor - 1));
+                    cursor --;
+                    continue;
+                }
+
+                const stop = cursor;
+
+                while (cursor > 0 && !this.separatorRegex.test(text.charAt(cursor - 1)) && !this.compositionCharRegex.test(text.charAt(cursor - 1))) cursor --;
+
+                words.push(text.slice(cursor, stop));
+            }
+
+            return words;
+        }
+
         const words = [];
-        let cursor = Math.min(index ?? text.length, text.length);
+        let cursor = end;
 
         while (words.length < count && cursor > 0) {
             while (cursor > 0 && this.boundaryRegex.test(text.charAt(cursor - 1))) cursor --;
 
-            const end = cursor;
+            const stop = cursor;
 
             while (cursor > 0 && !this.boundaryRegex.test(text.charAt(cursor - 1))) cursor --;
 
-            if (end === cursor) break;
+            if (stop === cursor) break;
 
-            words.push(text.substring(cursor, end));
+            words.push(text.substring(cursor, stop));
         }
 
         return words;
@@ -210,6 +427,14 @@ export class SuggestEngine {
     }
 
     suggestAt(text, caret) {
+        const composition = this.language ? this.compositionsByLanguage[this.language] : null;
+
+        if (composition && this.compositionBuffer()) {
+            const end = Math.min(caret ?? text.length, text.length);
+
+            return this.compositionSuggestionsInternal(composition, this.previousWords(text, end, 2), this.compositionBuffer());
+        }
+
         const word = this.wordAt(text, caret);
         const end = Math.min(caret ?? text.length, text.length) - word.length;
 
@@ -227,6 +452,16 @@ export class SuggestEngine {
     suggestInternal(word, previousWords) {
         if (!this.language) return [];
         if (typeof word !== 'string' || word.length === 0) return [];
+
+        const composition = this.compositionsByLanguage[this.language];
+
+        if (composition && this.compositionBuffer()) return this.compositionSuggestionsInternal(composition, previousWords, this.compositionBuffer());
+
+        if (composition && isReadingLike(word, composition.reading)) {
+            const results = this.compositionSuggestionsInternal(composition, previousWords, word);
+
+            if (results.length) return results;
+        }
 
         const wanted = word.toLowerCase();
         const limit = this.maxSuggestions;
@@ -430,7 +665,7 @@ export class SuggestEngine {
 
         this.userWordsOptions = normalized;
         this.userWordsStore = new UserWords(normalized);
-        if (this.language) this.userWordsStore.setLanguage(this.language);
+        if (this.language) this.userWordsStore.setLanguage(this.language, wordCharsFor(this.language), compositionMinLength(this.language));
     }
 
     disableUserWords() {

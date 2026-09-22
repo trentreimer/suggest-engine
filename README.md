@@ -197,6 +197,11 @@ the same option shapes as the constructor.
 | `addWordList(name, source)` | Register a word list for the current language (`url` string, `string[]`, or `{ text }`); same name replaces; requires a language to be set first |
 | `addContextModel(source)` | Register suggestion context data for the current language (`url` string, `ArrayBuffer`, or `NgramModel`); same language replaces; requires a language to be set first |
 | `loadSuggestionContext(baseUrl?)` | Fetch the bundled `<language>.ngram.bin` (resolves `false` when none ships); the default base URL resolves relative to the module, so pass one where no module URL is available (for example Node) |
+| `loadComposition(lang?)` | Load the bundled reading-to-candidate data for the current language (resolves `false` when the language ships none) — see [Composition languages](#composition-languages) |
+| `compositionActive` | `true` while the active language is a composition language (getter) |
+| `compositionAppend(key)` / `compositionBackspace()` / `compositionReset()` / `compositionBuffer()` | Maintain the composition reading buffer; `append` accepts pinyin/kana keys or T9 digits and returns the current candidates, `backspace` reports whether anything was removed |
+| `compositionVoiceLast(mark)` | Apply Japanese voicing (`゛` dakuten or `゜` handakuten) to the last kana of the buffer; `false` when it does not apply |
+| `compositionSuggestions(context?, limit?)` | Ranked candidates for the active buffer (context-first when context data and prior text are available) |
 | `wordAt(text, caret)` | Word ending at the caret — letters, combining marks, apostrophes/hyphens, and the active language's connector characters are word characters |
 | `previousWords(text, index, count)` | Up to `count` words ending before `index`, nearest first (used for context) |
 | `suggest(word, context?)` | Ranked suggestions: with `context` (the text before the current word) and matching context data, matches for the previous two words first (count order), then matches for the previous word alone, then user words (frequency order), then word lists **in registration order** — word list order is suggestion priority, so ship lists most-common-first; deduped case-insensitively; `text` carries the word's own casing, `insertSuffix` is what to insert after the typed prefix |
@@ -219,7 +224,9 @@ connector-character map `word-chars.js`): `en`, `fr`, `es`,
 `de`, `pt`, `id`, `ru`, `ar`, `hi`, `bn`, `sw`, `pcm`, `it`, `tr`, `vi`, `fa`,
 `mr`, `ha`, `tl`, `uk`, `pl`, `nl`, `ko`, `he`, `el`, `ur`, `ta`, `te`, `am`,
 `yo`, `zu`, `gu`, `pa`, `ml`, `kn`, `om`, `ig`, `xh`, `so`, `sn`, `rw`, `ny`,
-and `wo`. `pcm` combines a manually cached Common Voice archive (CC0) with two
+and `wo`. Mandarin and Japanese ship as composition languages instead —
+see [Composition languages](#composition-languages). `pcm` combines a manually
+cached Common Voice archive (CC0) with two
 automatically fetched CC-BY 4.0 corpora; rebuilding it needs the archive
 described in [Regenerating the data](#regenerating-the-data). The `ur`, `ta`,
 `te`, `am`, `yo`, `zu`, `gu`, `pa`, `ml`, `kn`, `om`, `ig`, `xh`, `so`, `sn`,
@@ -243,8 +250,9 @@ a copy-paste into a template literal.
 ### Bundled context models
 
 Context models ship alongside the word lists as `languages/<code>.ngram.bin`
-for every bundled word-list language — a section of one-word contexts plus a
-section of two-word contexts where the corpus supports them — and are copied to
+for every bundled word-list and composition language — a section of one-word
+contexts plus a section of two-word contexts where the corpus supports them —
+and are copied to
 `dist/languages/` so the CDN
 build can fetch them next to the bundle:
 
@@ -268,6 +276,47 @@ present.
 
 Corpus provenance, licensing and generation details are documented in
 [ATTRIBUTION.md](ATTRIBUTION.md).
+
+### Composition languages
+
+Mandarin (`zh`) and Japanese (`ja`) ship as composition languages. Instead of
+word lists completed by prefix, they bundle reading-to-candidate tables —
+toneless pinyin for `zh`, kana readings for `ja` — with ngram context models
+over the candidate vocabulary. The host drives the reading buffer; the engine
+turns it into ranked candidates:
+
+```js
+const engine = new SuggestEngine({ language: 'zh' });
+
+await engine.loadComposition();
+await engine.loadSuggestionContext();   // optional context ranking
+
+engine.compositionAppend('ni');
+// → [{ text: '你', insertSuffix: '你', source: 'bundled' }, ...]
+
+engine.compositionSuggestions('你好');   // context: committed text so far
+engine.compositionBackspace();
+engine.compositionReset();
+```
+
+- `compositionAppend(key)` accepts pinyin/kana keys or T9 digits (`2`–`9`) and
+  returns the current candidates. `compositionBackspace()` and
+  `compositionReset()` maintain the buffer, `compositionBuffer()` reports the
+  pending reading, `compositionVoiceLast(mark)` applies Japanese dakuten or
+  handakuten to the last kana, and `compositionActive` tells composition
+  languages apart.
+- Candidates rank context-first: trigram then bigram continuations of the
+  committed text, then learned user words whose reading matches, then corpus
+  frequency. `suggestAt(text, caret)` returns candidates for the active buffer
+  ranked against the text before the caret, and `suggest(reading, context)`
+  doubles as a stateless lookup — pass pinyin or kana as the word.
+  `nextWords(context)` predicts the next character or word from committed
+  text.
+- Picking a candidate belongs to the host: insert the candidate's `text`, then
+  call `recordWord(text)` — composition languages learn single characters, so
+  frequent characters surface ahead of corpus frequency next time.
+  `compositionSuggestions(context?, limit?)` exposes the ranking for hosts
+  that render candidates themselves.
 
 ### Regenerating the data
 
@@ -305,9 +354,9 @@ matters because HPLT documents are web pages of varying length.
 
 Host projects are updated independently of this repository. A build writes
 host reference copies only when `HOST_DIR=/path/to/host` names the host
-project root; for the zh/ja composition data the site fetches at runtime
-(`composition.txt`), regenerate with, for example,
-`HOST_DIR=../click.totype.org node tools/build-wordlists.mjs zh`.
+project root; for example `HOST_DIR=../click.totype.org
+node tools/build-wordlists.mjs zh` refreshes the site's reference copies of
+the bundled data.
 
 #### Manually cached corpora
 

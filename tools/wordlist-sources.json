@@ -419,12 +419,14 @@
         "ja": {
             "mode": "composition",
             "tatoebaCode": "jpn",
-            "script": "Jpan"
+            "script": "Jpan",
+            "reading": "kana"
         },
         "zh": {
             "mode": "composition",
             "tatoebaCode": "cmn",
-            "script": "Hani"
+            "script": "Hani",
+            "reading": "pinyin"
         }
     }
 }

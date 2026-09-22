@@ -61,15 +61,16 @@ bigram context models) and reference copies in the host project
 
 ## Composition data
 
-Reading-to-word conversion files used by the host's composition input
-(`languages/<code>/composition.txt`); `ja` derives kana readings from Tatoeba's
-furigana transcriptions, `zh` derives toneless pinyin readings with
+Bundled composition data (`languages/<code>.js` with `<code>.ngram.bin`
+context models over the candidate vocabulary) and reference copies in the host
+project (`languages/<code>/composition.txt`); `ja` derives kana readings from
+Tatoeba's furigana transcriptions, `zh` derives toneless pinyin readings with
 [pinyin-pro](https://github.com/zh-lx/pinyin-pro) (MIT, build-time dependency only).
 
-| Language | Source file | License | Segments | Readings | Generated |
-|---|---|---|---|---|---|
-| ja | `jpn_transcriptions.tsv.bz2` | CC-BY 2.0 FR | 249,000 | 19,903 | 2026-09-17 |
-| zh | `cmn_sentences.tsv.bz2` | CC-BY 2.0 FR | 89,040 | 20,287 | 2026-09-17 |
+| Language | Source file | License | Segments | Readings | Candidates | Bigram contexts | Bigram pairs | Trigram contexts | Trigram pairs | Generated |
+|---|---|---|---|---|---|---|---|---|---|---|
+| ja | `jpn_transcriptions.tsv.bz2` | CC-BY 2.0 FR | 249,007 | 19,903 | 7,743 | 5,231 | 22,091 | 4,992 | 6,965 | 2026-09-22 |
+| zh | `cmn_sentences.tsv.bz2` | CC-BY 2.0 FR | 89,065 | 20,288 | 12,129 | 6,867 | 21,724 | 5,322 | 7,164 | 2026-09-22 |
 
 ## Source selection
 

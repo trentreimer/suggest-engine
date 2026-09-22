@@ -1,11 +1,22 @@
 {
     "code": "ja",
     "mode": "composition",
-    "tatoebaCode": "jpn",
-    "sourceFile": "jpn_transcriptions.tsv.bz2",
-    "sourceUrl": "https://downloads.tatoeba.org/exports/per_language/jpn/jpn_transcriptions.tsv.bz2",
-    "license": "CC-BY 2.0 FR",
-    "sentences": 249000,
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "jpn_transcriptions.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/jpn/jpn_transcriptions.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 249007
+        }
+    ],
+    "sentences": 249007,
     "readings": 19903,
-    "generated": "2026-09-17"
+    "candidates": 7743,
+    "ngramContexts": 5231,
+    "ngramPairs": 22091,
+    "trigramContexts": 4992,
+    "trigramPairs": 6965,
+    "ngramBytes": 187608,
+    "generated": "2026-09-22"
 }

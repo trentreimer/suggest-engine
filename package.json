@@ -1,6 +1,6 @@
 {
     "name": "suggest-engine",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "description": "Editor-agnostic autocomplete suggestion engine with optional user word learning and context ranking.",
     "license": "MIT",
     "type": "module",
