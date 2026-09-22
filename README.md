@@ -16,7 +16,7 @@ is required — pass one to the constructor or call `setLanguage()`; the engine
 stays inert until then.
 
 ```js
-import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.6.0/dist/suggest-engine.esm.js';
+import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.10.0/dist/suggest-engine.esm.js';
 
 const engine = new SuggestEngine({ language: 'en' });
 
@@ -33,7 +33,7 @@ engine.suggest('wo', 'in the ');
 ## Full example
 
 ```js
-import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.6.0/dist/suggest-engine.esm.js';
+import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.10.0/dist/suggest-engine.esm.js';
 
 const engine = new SuggestEngine({
     language: 'en',
