@@ -32,7 +32,7 @@ engine.suggest('wo', 'in the ');
 ## Full example
 
 This example uses hard-coded strings to demonstrate methods, but other than configuration,
-your application would probably supply some of the strings programmatically.
+your application would often supply strings programmatically.
 
 ```js
 import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.0/dist/suggest-engine.esm.js';
