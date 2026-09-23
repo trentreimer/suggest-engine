@@ -25,8 +25,10 @@ await engine.loadSuggestionContext();   // optional suggestion context data
 engine.suggest('hel');
 // → [{ text: 'help', insertSuffix: 'p', source: 'bundled' }, ...]
 
-engine.suggest('wo', 'in the ');
-// → [{ text: 'world', ... }, ...] — the previous word promotes likely continuations
+const text = 'in the wo';
+
+engine.suggestAt(text, text.length);
+// → [{ text: 'world', ... }, ...] — the previous words promotes likely continuations
 ```
 
 ## Full example
@@ -54,8 +56,8 @@ engine.recordWord('Sarah');
 
 var currentText = 'Hello Sar';
 
-const word = engine.wordAt(currentText, 100); // → 'Sar'
-const suggestions = engine.suggestAt(currentText, 100); // word + preceding text in one call
+const word = engine.wordAt(currentText, currentText.length); // → 'Sar'
+const suggestions = engine.suggestAt(currentText, currentText.length); // word + preceding text in one call
 // → [{ text: 'Sarah', insertSuffix: 'rah', source: 'user-words' }, ...]
 
 engine.nextWords('Hello'); // likely next words with no prefix typed
