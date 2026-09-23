@@ -27,7 +27,7 @@ engine.suggest('hel');
 
 const text = 'in the wo';
 
-engine.suggestAt(text, text.length);
+engine.suggestAt(text);
 // → [{ text: 'world', ... }, ...] — the previous words promotes likely continuations
 ```
 
@@ -56,8 +56,8 @@ engine.recordWord('Sarah');
 
 var currentText = 'Hello Sar';
 
-const word = engine.wordAt(currentText, currentText.length); // → 'Sar'
-const suggestions = engine.suggestAt(currentText, currentText.length); // word + preceding text in one call
+const word = engine.wordAt(currentText); // → 'Sar'
+const suggestions = engine.suggestAt(currentText); // word + preceding text in one call
 // → [{ text: 'Sarah', insertSuffix: 'rah', source: 'user-words' }, ...]
 
 engine.nextWords('Hello'); // likely next words with no prefix typed
