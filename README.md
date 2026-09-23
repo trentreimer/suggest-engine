@@ -1,7 +1,7 @@
 # suggest-engine
 
 Editor-agnostic autocomplete suggestion engine with optional context ranking.
-Words a user enters repeatedly can also optionally be learned on-device and 
+Words a user enters repeatedly can optionally be learned on-device and 
 suggested ahead of shipped dictionaries. 
 
 When context data is loaded, suggestions also account for the word that precedes 
