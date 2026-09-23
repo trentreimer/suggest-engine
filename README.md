@@ -28,7 +28,7 @@ engine.suggest('hel');
 const text = 'in the wo';
 
 engine.suggestAt(text);
-// → [{ text: 'world', ... }, ...] — the previous words promotes likely continuations
+// → [{ text: 'world', ... }, ...] — the previous words promote likely continuations
 ```
 
 ## Full example
