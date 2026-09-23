@@ -22,7 +22,9 @@ const engine = new SuggestEngine({ language: 'en' });
 await engine.loadWordList();   // Loads word list for the selected language
 await engine.loadSuggestionContext();   // optional suggestion context data
 
-engine.suggest('hel');
+var text = 'hel';
+
+engine.suggest(text);
 // → [{ text: 'help', insertSuffix: 'p', source: 'bundled' }, ...]
 
 const text = 'in the wo';
@@ -54,10 +56,10 @@ await engine.loadSuggestionContext();
 // Record a word that the user wants to see in suggestions
 engine.recordWord('Sarah');
 
-var currentText = 'Hello Sar';
+var text = 'Hello Sar';
 
-const word = engine.wordAt(currentText); // → 'Sar'
-const suggestions = engine.suggestAt(currentText); // word + preceding text in one call
+const word = engine.wordAt(text); // → 'Sar'
+const suggestions = engine.suggestAt(text); // word + preceding text in one call
 // → [{ text: 'Sarah', insertSuffix: 'rah', source: 'user-words' }, ...]
 
 engine.nextWords('Hello'); // likely next words with no prefix typed
