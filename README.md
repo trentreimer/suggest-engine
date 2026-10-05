@@ -15,7 +15,7 @@ A language is required — pass one to the constructor or call `setLanguage()`; 
 stays inert until then.
 
 ```js
-import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.0/dist/suggest-engine.esm.js';
+import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.1/dist/suggest-engine.esm.js';
 
 const engine = new SuggestEngine({ language: 'en' });
 
@@ -39,7 +39,7 @@ This example uses hard-coded strings to demonstrate methods, but other than conf
 your application would often supply strings programmatically.
 
 ```js
-import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.0/dist/suggest-engine.esm.js';
+import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.1/dist/suggest-engine.esm.js';
 
 const engine = new SuggestEngine({
     language: 'en',

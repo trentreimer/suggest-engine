@@ -958,6 +958,7 @@ yumi
 aja
 arab
 ayahmu
+babi
 barunya
 bea
 berteriak
@@ -1052,7 +1053,6 @@ tinggalkan
 tombol
 topi
 utara
-anjingnya
 apartemen
 bantu
 berikutnya
@@ -1492,6 +1492,7 @@ menghindari
 mengundang
 menyeberang
 menyiapkan
+monyet
 motor
 muka
 parkir
@@ -1985,7 +1986,6 @@ yoko
 zamenhof
 akrab
 alasannya
-anjingku
 aplikasi
 as
 austria
@@ -3227,6 +3227,7 @@ patung
 patut
 paus
 pegunungan
+pelacur
 pelajarannya
 pelaku
 pelindung
@@ -3308,7 +3309,6 @@ saudaramu
 sawah
 sawit
 seandainya
-sebodoh
 sebotol
 secepatnya
 sekalian
@@ -3418,7 +3418,6 @@ amarah
 amazon
 ambulans
 amin
-anjingmu
 ankara
 anna
 antariksa
@@ -3704,7 +3703,6 @@ keajaiban
 kebenarannya
 keberangkatannya
 kebijakan
-kebodohan
 keburukan
 kebutuhan
 kecanduan
@@ -4992,6 +4990,7 @@ kental
 kentang
 kentang-kentangnya
 kepanasan
+keparat
 keponakanku
 kepunahan
 keputusannya
@@ -5845,7 +5844,6 @@ suster
 sutra
 swis
 syukur
-tai
 tajikistan
 takutlah
 tamil
@@ -6142,7 +6140,6 @@ ania
 animalia
 animistik
 anion
-anjing-anjingnya
 anjlok
 antaranya
 antardaerah
@@ -7965,7 +7962,6 @@ keberuntunganmu
 keberuntungannya
 kebidanan
 kebijaksanaan
-kebodohanmu
 kebohongannya
 kebotakan
 kebunnya
@@ -8259,7 +8255,6 @@ konsulat
 konsumsi
 kontakku
 konteks
-kontolnya
 kontra
 kontradiksi
 kontradiksinya
@@ -8801,7 +8796,6 @@ membicarakanku
 membicarakannya
 membidik
 membisikkan
-membodohi
 membohongi
 membohongiku
 membohongimu
@@ -9998,4 +9992,10 @@ perduli
 perempat
 perempuan-perempuan
 perempuanmu
+perencanaan
+pergaulan
+perguruan
+perhatiannya
+perhatiin
+perhentian
 `;

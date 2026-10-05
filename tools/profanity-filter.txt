@@ -185,8 +185,11 @@ harami
 
 [id]
 anjing
+anjing-anjingnya
+anjingku
+anjingmu
+anjingnya
 asu
-babi
 bajingan
 bangsat
 bego
@@ -196,12 +199,15 @@ cibai
 goblok
 jancok
 jancuk
-keparat
+kebodohan
+kebodohanmu
 kontol
+kontolnya
+membodohi
 memek
-monyet
 ngentot
-pelacur
+sebodoh
+tai
 tolol
 
 [bn]

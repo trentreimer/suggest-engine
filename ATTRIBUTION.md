@@ -20,7 +20,7 @@ bigram context models) and reference copies in the host project
 | es | `spa_sentences.tsv.bz2` | CC-BY 2.0 FR | 442,135 | 10,000 | 9,690 | 49,255 | 29,347 | 56,077 | 2026-09-19 |
 | de | `deu_sentences.tsv.bz2` | CC-BY 2.0 FR | 781,130 | 10,000 | 9,890 | 61,209 | 39,127 | 92,841 | 2026-09-19 |
 | pt | `por_sentences.tsv.bz2` | CC-BY 2.0 FR | 444,636 | 10,000 | 9,576 | 48,409 | 27,956 | 52,946 | 2026-09-19 |
-| id | `ind_sentences.tsv.bz2` | CC-BY 2.0 FR | 28,311 | 10,000 | 2,464 | 6,576 | 1,686 | 2,450 | 2026-09-19 |
+| id | `ind_sentences.tsv.bz2` | CC-BY 2.0 FR | 28,311 | 10,000 | 2,465 | 6,579 | 1,685 | 2,449 | 2026-10-05 |
 | ru | `rus_sentences_CC0.tsv.bz2` | CC0 1.0 | 23,036 | 10,000 | 4,400 | 9,008 | 2,039 | 2,462 | 2026-09-19 |
 | ar | `ara_sentences.tsv.bz2` | CC-BY 2.0 FR | 68,543 | 10,000 | 4,909 | 11,600 | 2,060 | 2,664 | 2026-09-19 |
 | hi | `hin_sentences.tsv.bz2` | CC-BY 2.0 FR | 16,475 | 8,035 | 2,365 | 5,994 | 1,667 | 2,133 | 2026-09-19 |

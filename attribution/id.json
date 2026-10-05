@@ -1,17 +1,22 @@
 {
     "code": "id",
     "mode": "words",
-    "tatoebaCode": "ind",
-    "sourceFile": "ind_sentences.tsv.bz2",
-    "sourceUrl": "https://downloads.tatoeba.org/exports/per_language/ind/ind_sentences.tsv.bz2",
-    "license": "CC-BY 2.0 FR",
+    "sources": [
+        {
+            "name": "Tatoeba",
+            "file": "ind_sentences.tsv.bz2",
+            "url": "https://downloads.tatoeba.org/exports/per_language/ind/ind_sentences.tsv.bz2",
+            "license": "CC-BY 2.0 FR",
+            "sentences": 28311
+        }
+    ],
     "sentences": 28311,
     "tokens": 11394,
     "kept": 10000,
-    "ngramContexts": 2464,
-    "ngramPairs": 6576,
-    "trigramContexts": 1686,
-    "trigramPairs": 2450,
-    "ngramBytes": 64436,
-    "generated": "2026-09-19"
+    "ngramContexts": 2465,
+    "ngramPairs": 6579,
+    "trigramContexts": 1685,
+    "trigramPairs": 2449,
+    "ngramBytes": 64444,
+    "generated": "2026-10-05"
 }
