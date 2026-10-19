@@ -844,9 +844,11 @@ var SuggestEngine = class {
       if (previousId !== void 0) collect(index.model.bigram(previousId));
     }
     if (this.userWordsStore) {
+      const previous = previousWords.length ? previousWords[0].toLowerCase() : null;
       for (const entry of this.userWordsStore.list()) {
         if (results.length >= limit) break;
         const key = entry.word.toLowerCase();
+        if (key === previous) continue;
         if (seen.has(key)) continue;
         seen.add(key);
         results.push({ text: entry.word, insertSuffix: entry.word, source: "user-words" });

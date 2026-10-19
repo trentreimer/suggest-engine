@@ -277,6 +277,34 @@ test('nextWords returns successors first, then user words fill remaining slots',
     assert.deepEqual(engine.nextWords('delta').map(s => s.text), ['bewilder']);
 });
 
+test('nextWords does not re-suggest the just-completed word from user words', async () => {
+    const engine = await fixtureEngine({ maxSuggestions: 4 });
+
+    engine.recordWord('alpha');
+    engine.recordWord('alpha');
+    await engine.addContextModel(modelFor(alphaBetween));
+
+    const next = engine.nextWords('alpha');
+
+    assert.deepEqual(next.map(s => s.text), ['between', 'better']);
+    assert.deepEqual(next.map(s => s.source), ['bundled', 'bundled']);
+
+    // Only the immediately previous word is filtered; a user word two back is kept
+    assert.deepEqual(engine.nextWords('alpha between').map(s => s.text), ['alpha']);
+});
+
+test('nextWords fallback drops the previous word but keeps other user words', async () => {
+    const engine = await fixtureEngine();
+
+    engine.recordWord('bewilder');
+    engine.recordWord('bewilder');
+    engine.recordWord('delta');
+    engine.recordWord('delta');
+
+    assert.deepEqual(engine.nextWords('delta').map(s => s.text), ['bewilder']);
+    assert.deepEqual(engine.nextWords('bewilder').map(s => s.text), ['delta']);
+});
+
 test('nextWords and suggest with context degrade to current behavior without a model', async () => {
     const engine = await fixtureEngine();
 

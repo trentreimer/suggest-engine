@@ -15,7 +15,7 @@ A language is required — pass one to the constructor or call `setLanguage()`; 
 stays inert until then.
 
 ```js
-import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.1/dist/suggest-engine.esm.js';
+import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.2/dist/suggest-engine.esm.js';
 
 const engine = new SuggestEngine({ language: 'en' });
 
@@ -39,7 +39,7 @@ This example uses hard-coded strings to demonstrate methods, but other than conf
 your application would often supply strings programmatically.
 
 ```js
-import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.1/dist/suggest-engine.esm.js';
+import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.2/dist/suggest-engine.esm.js';
 
 const engine = new SuggestEngine({
     language: 'en',
@@ -259,7 +259,7 @@ the same option shapes as the constructor.
 | `previousWords(text, index, count)` | Up to `count` words ending before `index`, nearest first (used for context) |
 | `suggest(word, context?)` | Ranked suggestions: with `context` (the text before the current word) and matching context data, matches for the previous two words first (count order), then matches for the previous word alone, then user words (frequency order), then word lists **in registration order** — word list order is suggestion priority, so ship lists most-common-first; deduped case-insensitively; `text` carries the word's own casing, `insertSuffix` is what to insert after the typed prefix |
 | `suggestAt(text, caret)` | `wordAt` + preceding-word context + `suggest` in one call; the host's normal entry point |
-| `nextWords(context)` | Likely next words when no prefix is typed: successors of the last two words, then successors of the last word, then user words by frequency |
+| `nextWords(context)` | Likely next words when no prefix is typed: successors of the last two words, then successors of the last word, then user words by frequency, excluding the word just completed |
 | `recordWord(word)` | Count a completed word (validates letters/marks plus `'`/`-`, minimum length 2) |
 | `addWord(word)` | Add immediately suggestible (manual entry) |
 | `userWordsEnabled` | `true` while the user-words component is active (getter) |
