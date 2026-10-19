@@ -677,10 +677,10 @@ export class SuggestEngine {
         return matches;
     }
 
-    recordWord(word) {
+    recordWord(word, options) {
         if (!this.language) return false;
 
-        return this.userWordsStore ? this.userWordsStore.record(word) : false;
+        return this.userWordsStore ? this.userWordsStore.record(word, options) : false;
     }
 
     addWord(word) {

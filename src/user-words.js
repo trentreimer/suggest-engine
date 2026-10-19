@@ -1,5 +1,48 @@
 import { escapeForCharacterClass } from './word-lists.js';
 
+// Manual casings win over auto-capitalized recordings: a capitalized word that
+// the host flagged as auto-capitalized makes no casing claim, so "Hi" learned
+// at sentence starts is suggested as "hi", while "John" typed mid-sentence
+// (a manual capital) sticks no matter how often it later starts a sentence.
+function dominantCasing(entry, key) {
+    let best = key;
+    let bestCount = 0;
+    let bestLast = 0;
+
+    for (const [variant, stats] of Object.entries(entry.variants || {})) {
+        if (stats.count > bestCount || (stats.count === bestCount && stats.last >= bestLast)) {
+            best = variant;
+            bestCount = stats.count;
+            bestLast = stats.last;
+        }
+    }
+
+    return best;
+}
+
+function migrateEntries(languages) {
+    for (const bucket of Object.values(languages)) {
+        if (!bucket || typeof bucket !== 'object') continue;
+
+        for (const [key, entry] of Object.entries(bucket)) {
+            if (!entry || typeof entry !== 'object') continue;
+            if (entry.variants && typeof entry.variants === 'object') continue;
+
+            entry.variants = {};
+
+            // Historical casings predate the auto/manual distinction. A plain
+            // leading capital is assumed to be sentence-start auto-capitalization
+            // (the old last-wins behavior), so it makes no casing claim; other
+            // patterns (McDonald, HELLO, iPhone) stay as manual variants.
+            if (typeof entry.word === 'string' && entry.word && !/^\p{Lu}[^\p{Lu}]*$/u.test(entry.word)) {
+                entry.variants[entry.word] = { count: entry.count || 1, last: entry.last || 0 };
+            }
+
+            entry.word = dominantCasing(entry, key);
+        }
+    }
+}
+
 export class UserWords {
     constructor({ storagePrefix = 'suggest-engine', recordAfter = 2, maxWords = 300 } = {}) {
         this.storageKey = `${storagePrefix}:user-words`;
@@ -31,6 +74,7 @@ export class UserWords {
 
                 if (parsed && typeof parsed === 'object' && parsed.version === 1 && parsed.languages && typeof parsed.languages === 'object') {
                     this.data = parsed;
+                    migrateEntries(parsed.languages);
                 }
             }
         } catch (err) {
@@ -56,7 +100,7 @@ export class UserWords {
         return this.data.languages[this.language];
     }
 
-    record(word) {
+    record(word, options = {}) {
         if (typeof word !== 'string') return false;
 
         const trimmed = word.trim();
@@ -67,15 +111,26 @@ export class UserWords {
         const bucket = this.bucket();
         const key = trimmed.toLowerCase();
         const now = Date.now();
+        let entry = bucket[key];
 
-        if (bucket[key]) {
-            bucket[key].count ++;
-            bucket[key].last = now;
-            bucket[key].word = trimmed;
-        } else {
-            bucket[key] = { word: trimmed, count: 1, last: now };
+        if (!entry) {
+            entry = bucket[key] = { word: key, count: 0, last: now, variants: {} };
             this.evict(bucket);
         }
+
+        entry.count ++;
+        entry.last = now;
+
+        const autoCased = options.autoCapitalized === true && /^\p{Lu}[^\p{Lu}]*$/u.test(trimmed);
+
+        if (!autoCased) {
+            if (!entry.variants[trimmed]) entry.variants[trimmed] = { count: 0, last: now };
+
+            entry.variants[trimmed].count ++;
+            entry.variants[trimmed].last = now;
+        }
+
+        entry.word = dominantCasing(entry, key);
 
         this.write();
         return true;

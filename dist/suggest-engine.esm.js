@@ -29,6 +29,33 @@ function dedupe(words) {
 }
 
 // src/user-words.js
+function dominantCasing(entry, key) {
+  let best = key;
+  let bestCount = 0;
+  let bestLast = 0;
+  for (const [variant, stats] of Object.entries(entry.variants || {})) {
+    if (stats.count > bestCount || stats.count === bestCount && stats.last >= bestLast) {
+      best = variant;
+      bestCount = stats.count;
+      bestLast = stats.last;
+    }
+  }
+  return best;
+}
+function migrateEntries(languages) {
+  for (const bucket of Object.values(languages)) {
+    if (!bucket || typeof bucket !== "object") continue;
+    for (const [key, entry] of Object.entries(bucket)) {
+      if (!entry || typeof entry !== "object") continue;
+      if (entry.variants && typeof entry.variants === "object") continue;
+      entry.variants = {};
+      if (typeof entry.word === "string" && entry.word && !/^\p{Lu}[^\p{Lu}]*$/u.test(entry.word)) {
+        entry.variants[entry.word] = { count: entry.count || 1, last: entry.last || 0 };
+      }
+      entry.word = dominantCasing(entry, key);
+    }
+  }
+}
 var UserWords = class {
   constructor({ storagePrefix = "suggest-engine", recordAfter = 2, maxWords = 300 } = {}) {
     this.storageKey = `${storagePrefix}:user-words`;
@@ -54,6 +81,7 @@ var UserWords = class {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === "object" && parsed.version === 1 && parsed.languages && typeof parsed.languages === "object") {
           this.data = parsed;
+          migrateEntries(parsed.languages);
         }
       }
     } catch (err) {
@@ -73,7 +101,7 @@ var UserWords = class {
     if (!this.data.languages[this.language]) this.data.languages[this.language] = {};
     return this.data.languages[this.language];
   }
-  record(word) {
+  record(word, options = {}) {
     if (typeof word !== "string") return false;
     const trimmed = word.trim();
     if (trimmed.length < this.minLength) return false;
@@ -81,14 +109,20 @@ var UserWords = class {
     const bucket = this.bucket();
     const key = trimmed.toLowerCase();
     const now = Date.now();
-    if (bucket[key]) {
-      bucket[key].count++;
-      bucket[key].last = now;
-      bucket[key].word = trimmed;
-    } else {
-      bucket[key] = { word: trimmed, count: 1, last: now };
+    let entry = bucket[key];
+    if (!entry) {
+      entry = bucket[key] = { word: key, count: 0, last: now, variants: {} };
       this.evict(bucket);
     }
+    entry.count++;
+    entry.last = now;
+    const autoCased = options.autoCapitalized === true && /^\p{Lu}[^\p{Lu}]*$/u.test(trimmed);
+    if (!autoCased) {
+      if (!entry.variants[trimmed]) entry.variants[trimmed] = { count: 0, last: now };
+      entry.variants[trimmed].count++;
+      entry.variants[trimmed].last = now;
+    }
+    entry.word = dominantCasing(entry, key);
     this.write();
     return true;
   }
@@ -900,9 +934,9 @@ var SuggestEngine = class {
     if (previousId !== void 0) collect(index.model.bigram(previousId));
     return matches;
   }
-  recordWord(word) {
+  recordWord(word, options) {
     if (!this.language) return false;
-    return this.userWordsStore ? this.userWordsStore.record(word) : false;
+    return this.userWordsStore ? this.userWordsStore.record(word, options) : false;
   }
   addWord(word) {
     if (!this.language) return false;

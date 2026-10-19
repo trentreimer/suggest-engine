@@ -15,7 +15,7 @@ A language is required — pass one to the constructor or call `setLanguage()`; 
 stays inert until then.
 
 ```js
-import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.2/dist/suggest-engine.esm.js';
+import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.4/dist/suggest-engine.esm.js';
 
 const engine = new SuggestEngine({ language: 'en' });
 
@@ -39,7 +39,7 @@ This example uses hard-coded strings to demonstrate methods, but other than conf
 your application would often supply strings programmatically.
 
 ```js
-import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.2/dist/suggest-engine.esm.js';
+import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.4/dist/suggest-engine.esm.js';
 
 const engine = new SuggestEngine({
     language: 'en',
@@ -236,6 +236,16 @@ Defaults for unspecified properties: `storagePrefix: 'suggest-engine'`,
 `recordAfter: 2` (a word typed twice becomes suggestible),
 `maxWords: 300` (eviction by lowest count, then oldest use).
 
+**Casing:** suggestions return the word's dominant manual casing. Recordings
+made while the host's auto-uppercase was active pass
+`recordWord(word, { autoCapitalized: true })`: a plain leading capital (like
+`Hi` typed at a sentence start) then counts toward the lowercase form, while
+any other casing counts as a manual variant (`John` shifted mid-sentence,
+`McDonald`'s internal capital, `HELLO`). The most frequent manual variant
+wins, so proper names keep their capital even when they later start
+sentences, and sentence-start words are not suggested capitalized
+mid-sentence.
+
 **Disabled contract:** `suggest()` returns word-list results only;
 `recordWord()` / `addWord()` return `false`; `userWords()` returns `[]`;
 `removeWord()` / `clearUserWords()` are no-ops. No storage access occurs.
@@ -260,7 +270,7 @@ the same option shapes as the constructor.
 | `suggest(word, context?)` | Ranked suggestions: with `context` (the text before the current word) and matching context data, matches for the previous two words first (count order), then matches for the previous word alone, then user words (frequency order), then word lists **in registration order** — word list order is suggestion priority, so ship lists most-common-first; deduped case-insensitively; `text` carries the word's own casing, `insertSuffix` is what to insert after the typed prefix |
 | `suggestAt(text, caret)` | `wordAt` + preceding-word context + `suggest` in one call; the host's normal entry point |
 | `nextWords(context)` | Likely next words when no prefix is typed: successors of the last two words, then successors of the last word, then user words by frequency, excluding the word just completed |
-| `recordWord(word)` | Count a completed word (validates letters/marks plus `'`/`-`, minimum length 2) |
+| `recordWord(word, options?)` | Count a completed word (validates letters/marks plus `'`/`-`, minimum length 2). Pass `{ autoCapitalized: true }` when the host's auto-uppercase capitalized the word at a sentence start, so the leading capital makes no casing claim (see [User words](#user-words-userwords)) |
 | `addWord(word)` | Add immediately suggestible (manual entry) |
 | `userWordsEnabled` | `true` while the user-words component is active (getter) |
 | `userWords()` | `[{ word, count }]` sorted by frequency |
@@ -495,7 +505,10 @@ generation details are documented in [ATTRIBUTION.md](ATTRIBUTION.md).
 ### Storage
 
 User words live in `localStorage` under `${storagePrefix}:user-words` with
-schema `{ version: 1, languages: { [lang]: { [word]: { word, count, last } } } }`.
+schema `{ version: 1, languages: { [lang]: { [word]: { word, count, last, variants: { [casing]: { count, last } } } } } }`
+(entries written before casing variants existed migrate on load: a plain
+leading capital — the old engine's sentence-start behavior — is dropped, while
+other casing patterns become manual variants).
 Everything stays on-device. If storage is unavailable (private browsing), learning
 falls back to in-memory for the session. The `UserWords` class is exported for
 projects that want the learning component standalone.

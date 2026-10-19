@@ -45,6 +45,134 @@ test('suggestions rank by count then alphabetically', () => {
     assert.deepEqual(words.suggestionsFor('s'), ['Sam', 'Sarah']);
 });
 
+test('auto-capitalized recordings keep the lowercase form', () => {
+    globalThis.localStorage = mockStorage();
+    const words = new UserWords();
+
+    words.record('Hi', { autoCapitalized: true });
+    words.record('Hi', { autoCapitalized: true });
+
+    assert.deepEqual(words.suggestionsFor('h'), ['hi']);
+    assert.deepEqual(words.list(), [{ word: 'hi', count: 2 }]);
+});
+
+test('a manual casing sticks over auto-capitalized recordings', () => {
+    globalThis.localStorage = mockStorage();
+    const words = new UserWords();
+
+    words.record('John');
+    for (let i = 0; i < 5; i ++) words.record('John', { autoCapitalized: true });
+
+    assert.deepEqual(words.suggestionsFor('j'), ['John']);
+});
+
+test('the most frequent manual casing wins', () => {
+    globalThis.localStorage = mockStorage();
+    const words = new UserWords();
+
+    words.record('hi');
+    words.record('hi');
+    words.record('Hi');
+    assert.deepEqual(words.suggestionsFor('h'), ['hi']);
+
+    words.record('Hi');
+    assert.deepEqual(words.suggestionsFor('h'), ['Hi']);
+});
+
+test('auto capitalization leaves other casing patterns alone', () => {
+    globalThis.localStorage = mockStorage();
+
+    const internal = new UserWords({ storagePrefix: 'internal' });
+    internal.record('McDonald', { autoCapitalized: true });
+    internal.record('McDonald', { autoCapitalized: true });
+    assert.deepEqual(internal.suggestionsFor('m'), ['McDonald']);
+
+    const upper = new UserWords({ storagePrefix: 'upper' });
+    upper.record('HELLO', { autoCapitalized: true });
+    upper.record('HELLO', { autoCapitalized: true });
+    assert.deepEqual(upper.suggestionsFor('h'), ['HELLO']);
+
+    const lower = new UserWords({ storagePrefix: 'lower' });
+    lower.record('hi', { autoCapitalized: true });
+    lower.record('hi', { autoCapitalized: true });
+    assert.deepEqual(lower.suggestionsFor('h'), ['hi']);
+});
+
+test('entries from the old storage schema migrate with sentence-start capitals dropped', () => {
+    const storage = mockStorage();
+
+    storage.setItem('suggest-engine:user-words', JSON.stringify({
+        version: 1,
+        languages: {
+            en: {
+                are: { word: 'Are', count: 4, last: 123 },
+                sarah: { word: 'Sarah', count: 3, last: 122 },
+            },
+        },
+    }));
+
+    globalThis.localStorage = storage;
+    const words = new UserWords();
+
+    assert.deepEqual(words.suggestionsFor('a'), ['are']);
+    assert.deepEqual(words.suggestionsFor('sa'), ['sarah']);
+});
+
+test('old internal capitals and all-caps survive migration', () => {
+    const storage = mockStorage();
+
+    storage.setItem('suggest-engine:user-words', JSON.stringify({
+        version: 1,
+        languages: {
+            en: {
+                mcdonald: { word: 'McDonald', count: 2, last: 123 },
+                hello: { word: 'HELLO', count: 2, last: 122 },
+                iphone: { word: 'iPhone', count: 2, last: 121 },
+            },
+        },
+    }));
+
+    globalThis.localStorage = storage;
+    const words = new UserWords();
+
+    assert.deepEqual(words.suggestionsFor('m'), ['McDonald']);
+    assert.deepEqual(words.suggestionsFor('h'), ['HELLO']);
+    assert.deepEqual(words.suggestionsFor('i'), ['iPhone']);
+});
+
+test('a migrated lowercase word regains its capital after manual use', () => {
+    const storage = mockStorage();
+
+    storage.setItem('suggest-engine:user-words', JSON.stringify({
+        version: 1,
+        languages: { en: { john: { word: 'John', count: 3, last: 123 } } },
+    }));
+
+    globalThis.localStorage = storage;
+    const words = new UserWords();
+
+    assert.deepEqual(words.suggestionsFor('j'), ['john']);
+
+    words.record('John');
+    assert.deepEqual(words.suggestionsFor('j'), ['John']);
+});
+
+test('casing variants persist across reloads', () => {
+    const storage = mockStorage();
+    globalThis.localStorage = storage;
+
+    const words = new UserWords({ storagePrefix: 'ctt' });
+    words.record('Hi', { autoCapitalized: true });
+    words.record('Hi', { autoCapitalized: true });
+    words.record('John');
+    words.record('John');
+
+    const revived = new UserWords({ storagePrefix: 'ctt' });
+
+    assert.deepEqual(revived.suggestionsFor('h'), ['hi']);
+    assert.deepEqual(revived.suggestionsFor('j'), ['John']);
+});
+
 test('invalid words are rejected', () => {
     globalThis.localStorage = mockStorage();
     const words = new UserWords();

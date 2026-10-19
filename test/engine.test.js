@@ -82,6 +82,18 @@ test('empty userWords object enables with all defaults', () => {
     assert.ok(storage.getItem('suggest-engine:user-words'));
 });
 
+test('recordWord forwards autoCapitalized casing hints', () => {
+    const storage = mockStorage();
+    globalThis.localStorage = storage;
+
+    const engine = new SuggestEngine({ language: 'en', userWords: true });
+
+    engine.recordWord('Hi', { autoCapitalized: true });
+    engine.recordWord('Hi', { autoCapitalized: true });
+
+    assert.deepEqual(engine.suggest('h').map(s => s.text), ['hi']);
+});
+
 test('user words rank by frequency ahead of alphabetical sources', async () => {
     const storage = mockStorage();
     globalThis.localStorage = storage;
