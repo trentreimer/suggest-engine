@@ -94,6 +94,140 @@ test('recordWord forwards autoCapitalized casing hints', () => {
     assert.deepEqual(engine.suggest('h').map(s => s.text), ['hi']);
 });
 
+test('recordWordAt defaults to auto-capitalization at a sentence start', () => {
+    const storage = mockStorage();
+    globalThis.localStorage = storage;
+
+    const engine = new SuggestEngine({ language: 'en', userWords: true });
+
+    engine.recordWordAt('Hi', 2);
+    engine.recordWordAt('Hi', 2);
+    assert.deepEqual(engine.suggest('h').map(s => s.text), ['hi']);
+
+    engine.recordWordAt('Hi. Hello', 9);
+    engine.recordWordAt('Hi. Hello', 9);
+    assert.deepEqual(engine.suggest('he').map(s => s.text), ['hello']);
+});
+
+test('recordWordAt keeps manual capitals typed mid-sentence', () => {
+    const storage = mockStorage();
+    globalThis.localStorage = storage;
+
+    const engine = new SuggestEngine({ language: 'en', userWords: true });
+
+    engine.recordWordAt('hello John', 10);
+    engine.recordWordAt('hello John', 10);
+    assert.deepEqual(engine.suggest('j').map(s => s.text), ['John']);
+});
+
+test('recordWordAt accepts per-call and configured overrides', () => {
+    const storage = mockStorage();
+    globalThis.localStorage = storage;
+
+    const manual = new SuggestEngine({ language: 'en', userWords: { storagePrefix: 'manual' } });
+    manual.recordWordAt('Hi', 2, { autoCapitalized: false });
+    manual.recordWordAt('Hi', 2, { autoCapitalized: false });
+    assert.deepEqual(manual.suggest('h').map(s => s.text), ['Hi']);
+
+    const forced = new SuggestEngine({ language: 'en', userWords: { storagePrefix: 'forced' } });
+    forced.recordWordAt('hello Hi', 8, { autoCapitalized: true });
+    forced.recordWordAt('hello Hi', 8, { autoCapitalized: true });
+    assert.deepEqual(forced.suggest('h').map(s => s.text), ['hi']);
+
+    const runtime = new SuggestEngine({ language: 'en', userWords: { storagePrefix: 'runtime' } });
+    runtime.autoCapitalized = false;
+    runtime.recordWordAt('Hi', 2);
+    runtime.recordWordAt('Hi', 2);
+    assert.deepEqual(runtime.suggest('h').map(s => s.text), ['Hi']);
+});
+
+test('recordWordAt returns false without a word or without the component', () => {
+    const storage = mockStorage();
+    globalThis.localStorage = storage;
+
+    const disabled = new SuggestEngine({ language: 'en' });
+    assert.equal(disabled.recordWordAt('Hello', 5), false);
+
+    const enabled = new SuggestEngine({ language: 'en', userWords: true });
+    assert.equal(enabled.recordWordAt('Hello ', 6), false);
+    assert.equal(enabled.recordWordAt('Hello', 5), true);
+});
+
+test('suggestAt capitalizes at a sentence start only for a capitalized prefix', async () => {
+    const engine = new SuggestEngine({ language: 'en' });
+    await engine.addWordList('main', ['the', 'theory', 'there']);
+
+    assert.deepEqual(engine.suggestAt('Hello. T', 8).map(s => s.text), ['The', 'Theory', 'There']);
+    assert.deepEqual(engine.suggestAt('Hello. T', 8).map(s => s.insertSuffix), ['he', 'heory', 'here']);
+    assert.deepEqual(engine.suggestAt('Hello. t', 8).map(s => s.text), ['the', 'theory', 'there']);
+    assert.deepEqual(engine.suggestAt('hello T', 7).map(s => s.text), ['the', 'theory', 'there']);
+});
+
+test('suggestion casing follows the autoCapitalized setting', () => {
+    const storage = mockStorage();
+    globalThis.localStorage = storage;
+
+    const off = new SuggestEngine({ language: 'en', userWords: { storagePrefix: 'off' }, autoCapitalized: false });
+    off.recordWord('sarah');
+    off.recordWord('sarah');
+    assert.deepEqual(off.nextWords('').map(s => s.text), ['sarah']);
+
+    const on = new SuggestEngine({ language: 'en', userWords: { storagePrefix: 'on' } });
+    on.recordWord('sarah');
+    on.recordWord('sarah');
+    assert.deepEqual(on.nextWords('').map(s => s.text), ['Sarah']);
+    assert.deepEqual(on.nextWords('').map(s => s.insertSuffix), ['Sarah']);
+});
+
+test('suggestion casing is locale-aware', async () => {
+    const engine = new SuggestEngine({ language: 'tr' });
+    await engine.addWordList('main', ['istanbul']);
+
+    assert.deepEqual(engine.suggestAt('Merhaba. I', 10).map(s => s.text), ['İstanbul']);
+});
+
+test('nextWords is suppressed after a sentence terminator', () => {
+    const storage = mockStorage();
+    globalThis.localStorage = storage;
+
+    const english = new SuggestEngine({ language: 'en', userWords: { storagePrefix: 'english' } });
+    english.recordWord('sarah');
+    english.recordWord('sarah');
+    english.recordWord('solo');
+    english.recordWord('solo');
+
+    assert.deepEqual(english.nextWords('Hello.'), []);
+    assert.deepEqual(english.nextWords('Hello. '), []);
+    assert.deepEqual(english.nextWords('Hello!  '), []);
+    assert.deepEqual(english.nextWords('Hello?'), []);
+    assert.deepEqual(english.nextWords('Hello, ').map(s => s.text), ['sarah', 'solo']);
+    assert.deepEqual(english.nextWords('').map(s => s.text), ['Sarah', 'Solo']);
+
+    const hindi = new SuggestEngine({ language: 'hi', userWords: { storagePrefix: 'hindi' } });
+    hindi.recordWord('नमस्ते');
+    hindi.recordWord('नमस्ते');
+    hindi.recordWord('दुनिया');
+    hindi.recordWord('दुनिया');
+
+    assert.deepEqual(hindi.nextWords('नमस्ते। '), []);
+    assert.deepEqual(hindi.nextWords('नमस्ते, ').map(s => s.text), ['दुनिया']);
+
+    const japanese = new SuggestEngine({ language: 'ja', userWords: { storagePrefix: 'japanese' } });
+    japanese.recordWord('それ');
+    japanese.recordWord('それ');
+
+    assert.deepEqual(japanese.nextWords('これは。 '), []);
+    assert.deepEqual(japanese.nextWords('これは, ').map(s => s.text), ['それ']);
+
+    const custom = new SuggestEngine({ language: 'en', userWords: { storagePrefix: 'custom' }, sentenceTerminators: [';'] });
+    custom.recordWord('sarah');
+    custom.recordWord('sarah');
+
+    assert.deepEqual(custom.nextWords('Hello; '), []);
+    assert.deepEqual(custom.nextWords('Hello. ').map(s => s.text), ['sarah']);
+});
+
+
 test('user words rank by frequency ahead of alphabetical sources', async () => {
     const storage = mockStorage();
     globalThis.localStorage = storage;

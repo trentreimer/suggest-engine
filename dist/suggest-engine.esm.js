@@ -353,6 +353,29 @@ var segmenters_default = {
   th: "th"
 };
 
+// languages/sentence-terminators.js
+var defaultSentenceTerminators = [".", "?", "!"];
+var sentence_terminators_default = {
+  ar: [".", "\u061F", "!"],
+  fa: [".", "\u061F", "!"],
+  ps: [".", "\u061F", "!"],
+  sd: [".", "\u061F", "!"],
+  ckb: [".", "\u061F", "!"],
+  ur: [".", "\u061F", "!", "\u06D4"],
+  bn: ["\u0964", ".", "?", "!"],
+  hi: ["\u0964", ".", "?", "!"],
+  mr: ["\u0964", ".", "?", "!"],
+  pa: ["\u0964", ".", "?", "!"],
+  ne: ["\u0964", ".", "?", "!"],
+  as: ["\u0964", ".", "?", "!"],
+  or: ["\u0964", ".", "?", "!"],
+  zh: ["\u3002", "\uFF01", "\uFF1F", "."],
+  ja: ["\u3002", "\uFF01", "\uFF1F", "."],
+  ko: [".", "?", "!", "\u3002"],
+  am: ["\u1362", "\u1367", ".", "?", "!"],
+  hye: ["\u0589", ".", "?", "!"]
+};
+
 // src/composition.js
 function kataToHira(text) {
   return text.replace(/[\u30A1-\u30F6]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 96));
@@ -546,6 +569,8 @@ var SuggestEngine = class {
   constructor(options = {}) {
     this.language = options.language ? String(options.language).trim().toLowerCase() : null;
     this.maxSuggestions = options.maxSuggestions ?? 5;
+    this.autoCapitalized = options.autoCapitalized ?? true;
+    this.sentenceTerminators = options.sentenceTerminators ?? null;
     this.applyTokenizer(this.language);
     const userWordsOptions = normalizeUserWords(options.userWords);
     this.userWordsOptions = userWordsOptions;
@@ -796,9 +821,51 @@ var SuggestEngine = class {
     }
     return words.slice(-count).reverse();
   }
+  // A caret position starts a sentence when the text before it is empty or
+  // ends (whitespace aside) with the language's sentence-ending punctuation.
+  sentenceStart(before) {
+    const trimmed = String(before ?? "").replace(/\s+$/u, "");
+    if (!trimmed.length) return true;
+    return this.sentenceTerminatorsList().includes(trimmed.slice(-1));
+  }
+  sentenceEnd(text) {
+    const trimmed = String(text ?? "").replace(/\s+$/u, "");
+    return trimmed.length > 0 && this.sentenceTerminatorsList().includes(trimmed.slice(-1));
+  }
+  sentenceTerminatorsList() {
+    return this.sentenceTerminators || sentence_terminators_default[this.language] || defaultSentenceTerminators;
+  }
+  // Locale-aware so Turkish "i" capitalizes to "İ"; caseless scripts are
+  // unchanged by their own case mapping.
+  capitalizeSuggestionText(text) {
+    const first = text.charAt(0);
+    return first.toLocaleUpperCase(this.language || void 0) + text.slice(1);
+  }
+  // Matches the host rule: at a sentence start, all-lowercase suggestions are
+  // capitalized for display when the typed prefix is already capitalized, or
+  // when nothing has been typed and the host auto-capitalizes. insertSuffix
+  // is capitalized only when it is the whole word (no prefix to replace), so
+  // hosts that replace a case-mismatched prefix keep working unchanged.
+  applySuggestionCasing(results, prefix, before, hasContext) {
+    if (!hasContext || !results.length) return results;
+    if (!this.sentenceStart(before)) return results;
+    if (!(prefix ? /^\p{Lu}/u.test(prefix) : this.autoCapitalized)) return results;
+    return results.map((result) => {
+      const lower = result.text.toLocaleLowerCase(this.language || void 0);
+      if (result.text !== lower) return result;
+      const text = this.capitalizeSuggestionText(result.text);
+      return result.insertSuffix === result.text ? { ...result, text, insertSuffix: this.capitalizeSuggestionText(result.insertSuffix) } : { ...result, text };
+    });
+  }
   suggest(word, context) {
     const previousWords = typeof context === "string" && context.length ? this.previousWords(context, context.length, 2) : [];
-    return this.suggestInternal(word, previousWords);
+    const results = this.suggestInternal(word, previousWords);
+    return this.applySuggestionCasing(
+      results,
+      typeof word === "string" ? word : "",
+      typeof context === "string" ? context : "",
+      typeof context === "string"
+    );
   }
   suggestAt(text, caret) {
     const composition = this.language ? this.compositionsByLanguage[this.language] : null;
@@ -808,11 +875,19 @@ var SuggestEngine = class {
     }
     const word = this.wordAt(text, caret);
     const end = Math.min(caret ?? text.length, text.length) - word.length;
-    return this.suggestInternal(word, this.previousWords(text, end, 2));
+    const results = this.suggestInternal(word, this.previousWords(text, end, 2));
+    return this.applySuggestionCasing(
+      results,
+      word,
+      typeof text === "string" ? text.slice(0, end) : "",
+      typeof text === "string"
+    );
   }
   nextWords(context) {
+    if (this.sentenceEnd(context)) return [];
     const previousWords = typeof context === "string" && context.length ? this.previousWords(context, context.length, 2) : [];
-    return this.nextWordsInternal(previousWords);
+    const results = this.nextWordsInternal(previousWords);
+    return this.applySuggestionCasing(results, "", typeof context === "string" ? context : "", typeof context === "string");
   }
   suggestInternal(word, previousWords) {
     if (!this.language) return [];
@@ -933,6 +1008,19 @@ var SuggestEngine = class {
     }
     if (previousId !== void 0) collect(index.model.bigram(previousId));
     return matches;
+  }
+  // The host's normal recording entry point, mirroring suggestAt: the engine
+  // derives the completed word and its sentence position, then decides by
+  // itself whether a plain leading capital came from auto-capitalization. A
+  // per-call `autoCapitalized` still overrides the engine's setting.
+  recordWordAt(text, caret, options) {
+    if (!this.language || typeof text !== "string") return false;
+    const end = Math.min(caret ?? text.length, text.length);
+    const word = this.wordAt(text, end);
+    if (!word) return false;
+    const before = text.slice(0, end - word.length);
+    const autoCapitalized = options?.autoCapitalized ?? (this.autoCapitalized && this.sentenceStart(before));
+    return this.recordWord(word, { autoCapitalized });
   }
   recordWord(word, options) {
     if (!this.language) return false;

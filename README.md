@@ -15,7 +15,7 @@ A language is required — pass one to the constructor or call `setLanguage()`; 
 stays inert until then.
 
 ```js
-import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.4/dist/suggest-engine.esm.js';
+import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.12.0/dist/suggest-engine.esm.js';
 
 const engine = new SuggestEngine({ language: 'en' });
 
@@ -39,7 +39,7 @@ This example uses hard-coded strings to demonstrate methods, but other than conf
 your application would often supply strings programmatically.
 
 ```js
-import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.11.4/dist/suggest-engine.esm.js';
+import { SuggestEngine } from 'https://cdn.jsdelivr.net/gh/trentreimer/suggest-engine@v0.12.0/dist/suggest-engine.esm.js';
 
 const engine = new SuggestEngine({
     language: 'en',
@@ -68,8 +68,11 @@ engine.nextWords('Hello'); // likely next words with no prefix typed
 
 The host owns all editor interaction: feed the engine text plus a caret index,
 insert `insertSuffix` at the caret when a suggestion is chosen, and call
-`recordWord` when a word is completed (space, punctuation, Enter, or choosing a
-suggestion all count as completion).
+`recordWordAt(text, caret)` when a word is completed (space, punctuation,
+Enter, or choosing a suggestion all count as completion). `recordWordAt`
+derives the word and its sentence position itself, so the engine — not the
+editor — decides whether a leading capital came from the host's
+auto-capitalization; see [User words](#user-words-userwords).
 
 ### Supported languages
 
@@ -185,7 +188,8 @@ Models are compact and validated by hash at load time; a mismatched or missing
 model silently disables context ranking. `suggestAt(text, caret)` derives both
 the word being typed and up to two preceding words from the host's own text, so
 no extra state is needed; `nextWords(context)` serves keyboard-style "word after
-the space" suggestions when no prefix is typed.
+the space" suggestions when no prefix is typed, and returns nothing once the
+context already ends a sentence.
 
 ### Word characters
 
@@ -211,6 +215,22 @@ Because word boundaries are inherently ambiguous, the engine trusts the
 segmenter's choice; a partial word the segmenter splits differently may complete
 against the trailing piece rather than the whole run.
 
+### Sentence boundaries
+
+Sentence-ending punctuation is language-owned: a default `['.', '?', '!']` with
+per-language overrides ships in `languages/sentence-terminators.js` (for example
+`।` for Hindi and Marathi, `؟` for Arabic and Persian, `。` for Chinese and
+Japanese). The engine uses it to attribute sentence-start capitals when
+recording (`recordWordAt`), to capitalize suggestions at a sentence start, and
+to withhold `nextWords()` once a sentence ends. A host may override the list for
+every language with the `sentenceTerminators` constructor option.
+
+Auto-capitalization is on by default (`autoCapitalized: true`): hosts whose
+editor capitalizes sentence starts get the expected casing without passing
+flags, and hosts that do not can turn it off once. Casing is applied with the
+language's own rules (`toLocaleUpperCase`/`toLocaleLowerCase`), so Turkish `i`
+capitalizes to `İ`, while caseless scripts are left unchanged.
+
 ## API
 
 ### Constructor options
@@ -220,6 +240,8 @@ against the trailing piece rather than the whole run.
 | `language` | *(required)* | Active language; user words are bucketed per language. Pass it here or call `setLanguage()` — suggestions stay empty and word learning is off until a language is set |
 | `maxSuggestions` | `5` | Maximum results returned by `suggest()` |
 | `userWords` | *(omitted)* | Optional user-word learning component; see below |
+| `autoCapitalized` | `true` | Sentence-start auto-capitalization convention: `recordWordAt()` attributes a plain leading capital at a sentence start to the host's auto-capitalization (no casing claim), and sentence-start suggestions are capitalized for display. Assign to the engine's `autoCapitalized` property to toggle at runtime |
+| `sentenceTerminators` | per-language data | Sentence-ending punctuation overriding `languages/sentence-terminators.js` for every language |
 
 ### User words (`userWords`)
 
@@ -236,15 +258,18 @@ Defaults for unspecified properties: `storagePrefix: 'suggest-engine'`,
 `recordAfter: 2` (a word typed twice becomes suggestible),
 `maxWords: 300` (eviction by lowest count, then oldest use).
 
-**Casing:** suggestions return the word's dominant manual casing. Recordings
-made while the host's auto-uppercase was active pass
-`recordWord(word, { autoCapitalized: true })`: a plain leading capital (like
-`Hi` typed at a sentence start) then counts toward the lowercase form, while
-any other casing counts as a manual variant (`John` shifted mid-sentence,
-`McDonald`'s internal capital, `HELLO`). The most frequent manual variant
-wins, so proper names keep their capital even when they later start
-sentences, and sentence-start words are not suggested capitalized
-mid-sentence.
+**Casing:** suggestions return the word's dominant manual casing.
+`recordWordAt(text, caret)` detects a sentence start with the active language's
+terminators and, while `autoCapitalized` is on, makes no casing claim for a
+plain leading capital there (like `Hi` typed at a sentence start); any other
+casing counts as a manual variant (`John` shifted mid-sentence, `McDonald`'s
+internal capital, `HELLO`, and — when the host's auto-capitalization setting is
+off — a manually typed sentence-start capital). The most frequent manual variant
+wins, so proper names keep their capital even when they later start sentences,
+and sentence-start words are not suggested capitalized mid-sentence.
+`recordWord(word, { autoCapitalized })` remains for hosts that already know:
+`true` suppresses the claim for a plain leading capital, `false` records it as
+manual, and either overrides the engine's setting for that recording.
 
 **Disabled contract:** `suggest()` returns word-list results only;
 `recordWord()` / `addWord()` return `false`; `userWords()` returns `[]`;
@@ -267,10 +292,11 @@ the same option shapes as the constructor.
 | `compositionSuggestions(context?, limit?)` | Ranked candidates for the active buffer (context-first when context data and prior text are available) |
 | `wordAt(text, caret)` | Word ending at the caret — letters, combining marks, apostrophes/hyphens, and the active language's connector characters are word characters |
 | `previousWords(text, index, count)` | Up to `count` words ending before `index`, nearest first (used for context) |
-| `suggest(word, context?)` | Ranked suggestions: with `context` (the text before the current word) and matching context data, matches for the previous two words first (count order), then matches for the previous word alone, then user words (frequency order), then word lists **in registration order** — word list order is suggestion priority, so ship lists most-common-first; deduped case-insensitively; `text` carries the word's own casing, `insertSuffix` is what to insert after the typed prefix |
-| `suggestAt(text, caret)` | `wordAt` + preceding-word context + `suggest` in one call; the host's normal entry point |
-| `nextWords(context)` | Likely next words when no prefix is typed: successors of the last two words, then successors of the last word, then user words by frequency, excluding the word just completed |
-| `recordWord(word, options?)` | Count a completed word (validates letters/marks plus `'`/`-`, minimum length 2). Pass `{ autoCapitalized: true }` when the host's auto-uppercase capitalized the word at a sentence start, so the leading capital makes no casing claim (see [User words](#user-words-userwords)) |
+| `suggest(word, context?)` | Ranked suggestions: with `context` (the text before the current word) and matching context data, matches for the previous two words first (count order), then matches for the previous word alone, then user words (frequency order), then word lists **in registration order** — word list order is suggestion priority, so ship lists most-common-first; deduped case-insensitively; `text` carries the word's own casing, `insertSuffix` is what to insert after the typed prefix. With a context at a sentence start, all-lowercase results are returned capitalized for display (config/per-prefix rules as in `suggestAt`) |
+| `suggestAt(text, caret)` | `wordAt` + preceding-word context + `suggest` in one call; the host's normal entry point. At a sentence start, all-lowercase results are capitalized for display when the typed prefix is already capitalized, or — with no prefix — when `autoCapitalized` is on |
+| `nextWords(context)` | Likely next words when no prefix is typed: successors of the last two words, then successors of the last word, then user words by frequency, excluding the word just completed; returns `[]` after the language's sentence-ending punctuation; results are capitalized for display at a sentence start (`autoCapitalized`) |
+| `recordWordAt(text, caret, options?)` | `wordAt` + sentence position + `recordWord` in one call; the host's normal recording entry point. The engine decides `autoCapitalized` itself (a plain leading capital at a sentence start makes no casing claim while `autoCapitalized` is on); pass `{ autoCapitalized }` to override for this recording. Returns `false` without a completed word or when the component is off |
+| `recordWord(word, options?)` | Count a completed word (validates letters/marks plus `'`/`-`, minimum length 2). Pass `{ autoCapitalized: true }` when the host's auto-uppercase capitalized the word at a sentence start, or `{ autoCapitalized: false }` for a manual capital, to override the engine's setting for this recording (see [User words](#user-words-userwords)) |
 | `addWord(word)` | Add immediately suggestible (manual entry) |
 | `userWordsEnabled` | `true` while the user-words component is active (getter) |
 | `userWords()` | `[{ word, count }]` sorted by frequency |
@@ -519,10 +545,14 @@ projects that want the learning component standalone.
 the value and restoring the caret. Word completion can be detected on `input` events
 ending with a non-word character, or on `keydown` Enter. `engine.suggestAt(el.value,
 el.selectionStart)` gives context-aware suggestions with no extra bookkeeping; call
-`engine.nextWords(el.value)` when the caret sits right after a space.
+`engine.nextWords(el.value)` when the caret sits right after a space, and
+`engine.recordWordAt(el.value, el.selectionStart)` when a word completes.
 
 **Quill** — caret index is `quill.getSelection().index` (UTF-16 code units, matching
-`getText`); insert with `quill.insertText(index, insertSuffix)`. Deleting one
+`getText`); insert with `quill.insertText(index, insertSuffix)`. When a returned
+`text` is capitalized for display and the typed prefix is not, replace the typed
+prefix with `text` instead of splicing `insertSuffix`. Recording is
+`engine.recordWordAt(quill.getText(0, caret), caret)`. Deleting one
 character should delete a grapheme cluster, not a code point — use
 `Intl.Segmenter` with `granularity: 'grapheme'` so combining marks (Arabic
 harakat, Devanagari matras), zero-width joiners/non-joiners inside words

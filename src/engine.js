@@ -4,6 +4,7 @@ import { NgramModel, fnv1a } from './ngrams.js';
 import wordCharsByLanguage from '../languages/word-chars.js';
 import compositionByLanguage from '../languages/compositions.js';
 import segmentersByLanguage from '../languages/segmenters.js';
+import sentenceTerminatorsByLanguage, { defaultSentenceTerminators } from '../languages/sentence-terminators.js';
 import { parseComposition, compositionCandidates, normalizeReading, readingToDigits, isReadingLike, voiceKanaChar } from './composition.js';
 
 const userWordsDefaults = {
@@ -87,6 +88,17 @@ export class SuggestEngine {
     constructor(options = {}) {
         this.language = options.language ? String(options.language).trim().toLowerCase() : null;
         this.maxSuggestions = options.maxSuggestions ?? 5;
+
+        // The host's sentence-start auto-capitalization convention. When on,
+        // recordWordAt() attributes a plain leading capital at a sentence start
+        // to auto-capitalization (no casing claim), and suggestions shown at a
+        // sentence start are capitalized for display. Hosts with a runtime
+        // toggle just assign to this property.
+        this.autoCapitalized = options.autoCapitalized ?? true;
+        // Per-language defaults ship in languages/sentence-terminators.js; a
+        // host may override them for every language with this option.
+        this.sentenceTerminators = options.sentenceTerminators ?? null;
+
         this.applyTokenizer(this.language);
 
         const userWordsOptions = normalizeUserWords(options.userWords);
@@ -467,12 +479,70 @@ export class SuggestEngine {
         return words.slice(-count).reverse();
     }
 
+    // A caret position starts a sentence when the text before it is empty or
+    // ends (whitespace aside) with the language's sentence-ending punctuation.
+    sentenceStart(before) {
+        const trimmed = String(before ?? '').replace(/\s+$/u, '');
+
+        if (!trimmed.length) return true;
+
+        return this.sentenceTerminatorsList().includes(trimmed.slice(-1));
+    }
+
+    sentenceEnd(text) {
+        const trimmed = String(text ?? '').replace(/\s+$/u, '');
+
+        return trimmed.length > 0 && this.sentenceTerminatorsList().includes(trimmed.slice(-1));
+    }
+
+    sentenceTerminatorsList() {
+        return this.sentenceTerminators || sentenceTerminatorsByLanguage[this.language] || defaultSentenceTerminators;
+    }
+
+    // Locale-aware so Turkish "i" capitalizes to "İ"; caseless scripts are
+    // unchanged by their own case mapping.
+    capitalizeSuggestionText(text) {
+        const first = text.charAt(0);
+
+        return first.toLocaleUpperCase(this.language || undefined) + text.slice(1);
+    }
+
+    // Matches the host rule: at a sentence start, all-lowercase suggestions are
+    // capitalized for display when the typed prefix is already capitalized, or
+    // when nothing has been typed and the host auto-capitalizes. insertSuffix
+    // is capitalized only when it is the whole word (no prefix to replace), so
+    // hosts that replace a case-mismatched prefix keep working unchanged.
+    applySuggestionCasing(results, prefix, before, hasContext) {
+        if (!hasContext || !results.length) return results;
+        if (!this.sentenceStart(before)) return results;
+        if (!(prefix ? /^\p{Lu}/u.test(prefix) : this.autoCapitalized)) return results;
+
+        return results.map(result => {
+            const lower = result.text.toLocaleLowerCase(this.language || undefined);
+
+            if (result.text !== lower) return result;
+
+            const text = this.capitalizeSuggestionText(result.text);
+
+            return result.insertSuffix === result.text
+                ? { ...result, text, insertSuffix: this.capitalizeSuggestionText(result.insertSuffix) }
+                : { ...result, text };
+        });
+    }
+
     suggest(word, context) {
         const previousWords = typeof context === 'string' && context.length
             ? this.previousWords(context, context.length, 2)
             : [];
 
-        return this.suggestInternal(word, previousWords);
+        const results = this.suggestInternal(word, previousWords);
+
+        return this.applySuggestionCasing(
+            results,
+            typeof word === 'string' ? word : '',
+            typeof context === 'string' ? context : '',
+            typeof context === 'string',
+        );
     }
 
     suggestAt(text, caret) {
@@ -486,16 +556,26 @@ export class SuggestEngine {
 
         const word = this.wordAt(text, caret);
         const end = Math.min(caret ?? text.length, text.length) - word.length;
+        const results = this.suggestInternal(word, this.previousWords(text, end, 2));
 
-        return this.suggestInternal(word, this.previousWords(text, end, 2));
+        return this.applySuggestionCasing(
+            results,
+            word,
+            typeof text === 'string' ? text.slice(0, end) : '',
+            typeof text === 'string',
+        );
     }
 
     nextWords(context) {
+        if (this.sentenceEnd(context)) return [];
+
         const previousWords = typeof context === 'string' && context.length
             ? this.previousWords(context, context.length, 2)
             : [];
 
-        return this.nextWordsInternal(previousWords);
+        const results = this.nextWordsInternal(previousWords);
+
+        return this.applySuggestionCasing(results, '', typeof context === 'string' ? context : '', typeof context === 'string');
     }
 
     suggestInternal(word, previousWords) {
@@ -675,6 +755,24 @@ export class SuggestEngine {
         if (previousId !== undefined) collect(index.model.bigram(previousId));
 
         return matches;
+    }
+
+    // The host's normal recording entry point, mirroring suggestAt: the engine
+    // derives the completed word and its sentence position, then decides by
+    // itself whether a plain leading capital came from auto-capitalization. A
+    // per-call `autoCapitalized` still overrides the engine's setting.
+    recordWordAt(text, caret, options) {
+        if (!this.language || typeof text !== 'string') return false;
+
+        const end = Math.min(caret ?? text.length, text.length);
+        const word = this.wordAt(text, end);
+
+        if (!word) return false;
+
+        const before = text.slice(0, end - word.length);
+        const autoCapitalized = options?.autoCapitalized ?? (this.autoCapitalized && this.sentenceStart(before));
+
+        return this.recordWord(word, { autoCapitalized });
     }
 
     recordWord(word, options) {
